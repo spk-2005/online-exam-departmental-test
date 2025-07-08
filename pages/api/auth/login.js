@@ -1,6 +1,6 @@
 // pages/api/auth/login.js
 import connectMongo from "@/pages/lib/mongodb";
-import User from "@/pages/models/users";
+import User from "@/pages/lib/models/users";
 import jwt from 'jsonwebtoken';
 
 export default async function handler(req, res) {
