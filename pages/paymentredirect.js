@@ -67,7 +67,7 @@ export default function PaymentRedirect() {
 
           {/* QR Code Image */}
           <div className="bg-white p-4 rounded-lg shadow-md mb-4">
-            <Image width={500} height={500}
+            <img width={500} height={500}
               src="/scanner.jpg" // IMPORTANT: Update this path to your actual QR code image
               alt="Scan to Pay QR Code"
               className="w-48 h-48 mx-auto object-contain rounded-lg"
