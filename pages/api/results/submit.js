@@ -1,6 +1,6 @@
-import connectMongo from "@/pages/lib/mongodb";
-import Result from "@/pages/lib/__models__/result";
-import User from "@/pages/lib/__models__/users";
+import connectMongo from "@/pages/api/lib/mongodb";
+import Result from "@/pages/api/lib/models/result";
+import User from "@/pages/api/lib/models/users";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();

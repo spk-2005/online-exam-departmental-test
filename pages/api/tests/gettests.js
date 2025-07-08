@@ -1,5 +1,5 @@
-import connectMongo from "@/pages/lib/mongodb";
-import Test from "@/pages/lib/__models__/test";
+import connectMongo from "@/pages/api/lib/mongodb";
+import Test from "@/pages/api/lib/models/test";
 
 export default async function handler(req, res) {
   const { group, test } = req.query;

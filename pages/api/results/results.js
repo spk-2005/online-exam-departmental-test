@@ -1,6 +1,6 @@
 // pages/api/results/results.js
-import dbConnect from '@/pages/lib/mongodb'
-import Result from '@/pages/lib/__models__/result'; // Adjust path as needed
+import dbConnect from '@/pages/api/lib/mongodb'
+import Result from '@/pages/api/lib/models/result'; // Adjust path as needed
 
 export default async function handler(req, res) {
   // Set CORS headers
