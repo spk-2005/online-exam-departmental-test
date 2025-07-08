@@ -1,6 +1,6 @@
 // pages/api/payments.js
 import connectMongo from '@/pages/lib/mongodb';
-import Payment from '@/pages/lib/models/Payment';
+import Payment from '@/pages/lib/__models__/Payment';
 import multer from 'multer';
 import path from 'path';
 import { promises as fs } from 'fs';

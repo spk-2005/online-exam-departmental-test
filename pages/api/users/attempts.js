@@ -1,5 +1,5 @@
 import connectMongo from "@/pages/lib/mongodb";
-import User from "@/pages/lib/models/users";
+import User from "@/pages/lib/__models__/users";
 
 export default async function handler(req, res) {
   if (req.method !== "GET")
