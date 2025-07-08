@@ -1,0 +1,467 @@
+/* AvailableTests.module.css - Professional & Mobile-First Design */
+
+.availableTestsSection {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1rem;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #f8fafc;
+  min-height: 100vh;
+}
+
+/* Main heading */
+.mainHeading {
+  color: #1e293b;
+  font-size: 1.75rem;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 2rem;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  position: relative;
+}
+
+.mainHeading::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, #3b82f6, #06b6d4);
+  border-radius: 2px;
+}
+
+/* No tests message */
+.noTestsMessage {
+  text-align: center;
+  font-size: 1rem;
+  color: #64748b;
+  background: #ffffff;
+  padding: 2rem 1rem;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-top: 2rem;
+  border: 1px solid #e2e8f0;
+}
+
+/* Group container */
+.testGroup {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.testGroup:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+/* Group heading */
+.groupHeading {
+  color: #1e293b;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Test list */
+.testList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.testItem {
+  background: #f8fafc;
+  padding: 1.25rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.testItem:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+/* Test name and attempts info */
+.testInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.testName {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.attemptsInfo {
+  color: #64748b;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.attemptsCount {
+  background: #3b82f6;
+  color: white;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+}
+
+/* Action buttons container */
+.actionContainer {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Start test button */
+.startTestBtn {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  border: none;
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: none;
+  letter-spacing: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  white-space: nowrap;
+}
+
+.startTestBtn:hover {
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.startTestBtn:active {
+  transform: translateY(0);
+}
+
+.startTestBtn:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* No attempts left message */
+.noAttempts {
+  color: #dc2626;
+  font-weight: 600;
+  background: #fef2f2;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.noAttempts::before {
+  content: '⚠️';
+  font-size: 1rem;
+}
+
+/* Loading state */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: #64748b;
+}
+
+.loading::after {
+  content: '';
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Tablet styles */
+@media (min-width: 640px) {
+  .availableTestsSection {
+    padding: 2rem;
+  }
+  
+  .mainHeading {
+    font-size: 2.25rem;
+    margin-bottom: 3rem;
+  }
+  
+  .testGroup {
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+  
+  .groupHeading {
+    font-size: 1.5rem;
+  }
+  
+  .testItem {
+    padding: 1.5rem;
+  }
+  
+  .testName {
+    font-size: 1.125rem;
+  }
+  
+  .startTestBtn {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* Desktop styles */
+@media (min-width: 1024px) {
+  .availableTestsSection {
+    padding: 3rem;
+  }
+  
+  .mainHeading {
+    font-size: 2.5rem;
+  }
+  
+  .testGroup {
+    padding: 2.5rem;
+  }
+  
+  .testItem {
+    padding: 2rem;
+  }
+  
+  .testInfo {
+    min-width: 300px;
+  }
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 639px) {
+  .testItem {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  
+  .testInfo {
+    min-width: 100%;
+  }
+  
+  .actionContainer {
+    align-self: stretch;
+  }
+  
+  .startTestBtn {
+    width: 100%;
+    padding: 0.875rem;
+    font-size: 0.875rem;
+    justify-content: center;
+  }
+  
+  .noAttempts {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .attemptsInfo {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 374px) {
+  .availableTestsSection {
+    padding: 0.75rem;
+  }
+  
+  .mainHeading {
+    font-size: 1.5rem;
+  }
+  
+  .testGroup {
+    padding: 1rem;
+  }
+  
+  .groupHeading {
+    font-size: 1.125rem;
+  }
+  
+  .testItem {
+    padding: 1rem;
+  }
+  
+  .testName {
+    font-size: 0.875rem;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .testGroup {
+    border: 2px solid #000;
+  }
+  
+  .startTestBtn {
+    background: #000;
+    border: 2px solid #000;
+  }
+  
+  .startTestBtn:hover {
+    background: #333;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .testGroup,
+  .testItem,
+  .startTestBtn {
+    transition: none;
+  }
+  
+  .testGroup:hover,
+  .startTestBtn:hover {
+    transform: none;
+  }
+  
+  .loading::after {
+    animation: none;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .availableTestsSection {
+    background: #0f172a;
+    color: #e2e8f0;
+  }
+  
+  .mainHeading {
+    color: #f8fafc;
+  }
+  
+  .testGroup {
+    background: #1e293b;
+    border-color: #334155;
+  }
+  
+  .testGroup:hover {
+    background: #334155;
+  }
+  
+  .testItem {
+    background: #0f172a;
+    border-color: #334155;
+  }
+  
+  .testItem:hover {
+    background: #1e293b;
+  }
+  
+  .testName {
+    color: #f8fafc;
+  }
+  
+  .attemptsInfo {
+    color: #94a3b8;
+  }
+  
+  .noTestsMessage {
+    background: #1e293b;
+    color: #94a3b8;
+    border-color: #334155;
+  }
+  
+  .groupHeading {
+    color: #f8fafc;
+    border-color: #334155;
+  }
+}
+
+/* Print styles */
+@media print {
+  .availableTestsSection {
+    background: white;
+    color: black;
+    padding: 1rem;
+  }
+  
+  .testGroup {
+    box-shadow: none;
+    border: 1px solid #000;
+    margin-bottom: 1rem;
+    page-break-inside: avoid;
+  }
+  
+  .startTestBtn {
+    display: none;
+  }
+  
+  .mainHeading::after {
+    display: none;
+  }
+}
+
+/* Focus management for keyboard navigation */
+.testItem:focus-within {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Improved touch targets for mobile */
+@media (hover: none) and (pointer: coarse) {
+  .startTestBtn {
+    min-height: 44px;
+    padding: 0.75rem 1.5rem;
+  }
+  
+  .testItem {
+    min-height: 44px;
+  }
+}
