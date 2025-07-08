@@ -46,7 +46,6 @@ const PaymentSchema = new mongoose.Schema({
 });
 
 // Create index for faster queries
-PaymentSchema.index({ transactionId: 1 });
 PaymentSchema.index({ phoneNumber: 1 });
 PaymentSchema.index({ username: 1 });
 PaymentSchema.index({ selectedGroup: 1 });

@@ -67,8 +67,8 @@ export default function PaymentRedirect() {
 
           {/* QR Code Image */}
           <div className="bg-white p-4 rounded-lg shadow-md mb-4">
-            <Image
-              src="WhatsApp Image 2025-07-08 at 17.24.22_0382ee55.jpg" // IMPORTANT: Update this path to your actual QR code image
+            <Image width={500} height={500}
+              src="/WhatsApp Image 2025-07-08 at 17.24.22_0382ee55.jpg" // IMPORTANT: Update this path to your actual QR code image
               alt="Scan to Pay QR Code"
               className="w-48 h-48 mx-auto object-contain rounded-lg"
             />
