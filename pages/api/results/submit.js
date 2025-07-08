@@ -17,20 +17,20 @@ export default async function handler(req, res) {
     console.log(`Processing attempt decrease for user: ${name}, group: ${group}, test: ${test}`);
     
     // Find the user and decrease their attempts
-    const user = await User.findOne({ username: name }).lean();
+    const user = await User.findOne({ username: name });
     
     if (user) {
       console.log(`Found user: ${user.username}`);
       console.log(`User groupAttempts:`, JSON.stringify(user.groupAttempts, null, 2));
       
       // Find the group in user's groupAttempts
-      const groupIndex = user.groupAttempts.findIndex(g => g.group === group).lean();
+      const groupIndex = user.groupAttempts.findIndex(g => g.group === group);
       
       if (groupIndex !== -1) {
         console.log(`Found group at index: ${groupIndex}`);
         
         // Find the test in the group's tests
-        const testIndex = user.groupAttempts[groupIndex].tests.findIndex(t => t.testName === test).lean();
+        const testIndex = user.groupAttempts[groupIndex].tests.findIndex(t => t.testName === test);
         
         if (testIndex !== -1) {
           console.log(`Found test at index: ${testIndex}`);
