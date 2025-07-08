@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import PaymentForm from '@/pages/Paymentform'; // Ensure this path is correct based on your project structure
-
+import Image from 'next/image'; 
 export default function PaymentRedirect() {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(1); // Default to the first group's ID
@@ -67,7 +67,7 @@ export default function PaymentRedirect() {
 
           {/* QR Code Image */}
           <div className="bg-white p-4 rounded-lg shadow-md mb-4">
-            <img
+            <Image
               src="WhatsApp Image 2025-07-08 at 17.24.22_0382ee55.jpg" // IMPORTANT: Update this path to your actual QR code image
               alt="Scan to Pay QR Code"
               className="w-48 h-48 mx-auto object-contain rounded-lg"
@@ -84,7 +84,7 @@ export default function PaymentRedirect() {
               <span className="font-mono text-sm">8309179509@ptyes</span>
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText('testpayment@upi');
+                  navigator.clipboard.writeText('8309179509@ptyes');
                   alert('UPI ID copied to clipboard!'); // Optional: provide user feedback
                 }}
                 className="text-blue-600 hover:text-blue-800 text-sm"

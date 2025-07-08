@@ -89,7 +89,7 @@ const handleOK = () => {
 
                 <div>
                   <ol className="list-decimal list-inside space-y-4 text-gray-700" start="4">
-                    <li>You can click on the "" arrow which appears to the left of the question palette to collapse the question palette thereby maximizing the question window. To view the question palette again, you can click on "" which appears on the right side of the question window.</li>
+                    <li>You can click on the &quot;&quot; arrow which appears to the left of the question palette to collapse the question palette thereby maximizing the question window. To view the question palette again, you can click on  which appears on the right side of the question window.</li>
                     
                     <li>
                       <div className="font-semibold mb-2">Navigating to a Question:</div>

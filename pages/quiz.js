@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/router";
 import { Clock, User, CheckCircle, AlertCircle, Circle, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -12,7 +12,9 @@ export default function Quiz() {
   const quizStartTimeRef = useRef(null);
   const quizEndTimeRef = useRef(null);
 
-  const formatTime = (seconds) => {
+  // --- Helper Functions wrapped in useCallback for stability ---
+
+  const formatTime = useCallback((seconds) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
@@ -24,10 +26,9 @@ export default function Quiz() {
     } else {
       return `${secs.toString().padStart(2, '0')} secs`;
     }
-  };
+  }, []); // No external dependencies
 
-  // Format elapsed time for display (more readable format)
-  const formatElapsedTime = (totalSeconds) => {
+  const formatElapsedTime = useCallback((totalSeconds) => {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
@@ -39,15 +40,16 @@ export default function Quiz() {
     } else {
       return `${seconds} second${seconds !== 1 ? 's' : ''}`;
     }
-  };
+  }, []); // No external dependencies
 
-  // Format time for submission (HH:MM:SS format)
-  const formatTimeForSubmission = (totalSeconds) => {
+  const formatTimeForSubmission = useCallback((totalSeconds) => {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  };
+  }, []); // No external dependencies
+
+  // --- End of Helper Functions ---
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -110,13 +112,52 @@ export default function Quiz() {
     }
   }, [router.query.name, router.isReady]);
 
-  useEffect(() => {
-    if (router.isReady && group && test) {
-      fetchQuestions();
-    }
-  }, [router.isReady, group, test]);
 
-  const fetchQuestions = async () => {
+  // --- calculateScore, getQuestionStatistics, calculateTimeTaken wrapped in useCallback ---
+
+  const calculateScore = useCallback(() => {
+    let correctAnswers = 0;
+    questions.forEach((question, questionIndex) => {
+      const selectedAnswer = selectedOption[questionIndex];
+      if (selectedAnswer && question.correct) {
+        const correctAnswerIndex = question.correct.charCodeAt(0) - 65; // Convert 'A', 'B', 'C', 'D' to 0, 1, 2, 3
+        const correctAnswer = question.options[correctAnswerIndex];
+
+        if (selectedAnswer === correctAnswer) {
+          correctAnswers++;
+        }
+      }
+    });
+    return correctAnswers;
+  }, [questions, selectedOption]); // Dependencies: depends on 'questions' array and 'selectedOption' object
+
+  const getQuestionStatistics = useCallback(() => {
+    const attempted = Object.keys(selectedOption).filter(key => selectedOption[key] !== undefined).length;
+    const unattempted = questions.length - attempted;
+    const marked = Object.keys(markedQuestions).filter(key => markedQuestions[key]).length;
+
+    return {
+      attempted,
+      unattempted,
+      marked,
+      total: questions.length
+    };
+  }, [questions.length, selectedOption, markedQuestions]); // Dependencies: depends on 'questions.length', 'selectedOption', 'markedQuestions'
+
+  const calculateTimeTaken = useCallback(() => {
+    if (quizStartTimeRef.current) {
+      const endTime = quizEndTimeRef.current || Date.now();
+      const timeTakenMs = endTime - quizStartTimeRef.current;
+      return Math.floor(timeTakenMs / 1000); // Convert to seconds
+    }
+    // Fallback to timer-based calculation
+    return 7200 - timer;
+  }, [timer]); // Dependency: depends on 'timer' state
+
+
+  // --- fetchQuestions wrapped in useCallback and updated useEffect ---
+
+  const fetchQuestions = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -145,89 +186,116 @@ export default function Quiz() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [group, test]); // Dependencies: depends on 'group' and 'test' state
 
-useEffect(() => {
-  // Prevent back navigation when quiz is active
-  const handlePopState = (event) => {
-    if (questions.length > 0 && !showSummary) {
-      event.preventDefault();
-      const confirmLeave = window.confirm(
-        "Are you sure you want to leave the quiz? Your progress will be lost."
-      );
-      if (confirmLeave) {
-        // Clear localStorage and redirect
-        localStorage.removeItem("quizGroup");
-        localStorage.removeItem("quizTest");
-        router.push('/dashboard');
-      } else {
-        // Push the current state back to prevent navigation
-        window.history.pushState(null, null, window.location.pathname);
+  useEffect(() => {
+    if (router.isReady && group && test) {
+      fetchQuestions();
+    }
+  }, [router.isReady, group, test, fetchQuestions]); // Added fetchQuestions to dependencies
+
+  // --- handleSubmit wrapped in useCallback and updated useEffect ---
+
+  const handleSubmit = useCallback(async () => {
+    try {
+      // Stop the timer immediately when submit is clicked
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
       }
+
+      // Record end time
+      quizEndTimeRef.current = Date.now();
+
+      // Calculate accurate time taken
+      const timeTakenSeconds = calculateTimeTaken(); // Now a stable reference
+      setActualTimeTaken(timeTakenSeconds);
+
+      // Calculate score
+      const calculatedScore = calculateScore(); // Now a stable reference
+      setScore(calculatedScore);
+
+      // Get question statistics
+      const stats = getQuestionStatistics(); // Now a stable reference
+
+      // Calculate percentage
+      const percentage = questions.length > 0 ? ((calculatedScore / questions.length) * 100) : 0;
+
+      // Determine pass/fail (assuming 40% is passing)
+      const passingPercentage = 40;
+      const finalResult = percentage >= passingPercentage ? "PASS" : "FAIL";
+
+      // Get username
+      const actualUsername = localStorage.getItem('username') || name;
+
+      console.log("=== SUBMIT CALCULATIONS ===");
+      console.log("Questions total:", questions.length);
+      console.log("Attempted:", stats.attempted);
+      console.log("Unattempted:", stats.unattempted);
+      console.log("Correct answers:", calculatedScore);
+      console.log("Percentage:", percentage.toFixed(2));
+      console.log("Time taken (seconds):", timeTakenSeconds);
+      console.log("Final result:", finalResult);
+
+      // Prepare result data
+      const resultData = {
+        name: actualUsername,
+        group: decodeURIComponent(group),
+        test: decodeURIComponent(test),
+        score: calculatedScore,
+        attempted: stats.attempted,
+        unattempted: stats.unattempted,
+        total: questions.length,
+        percentage: percentage.toFixed(2),
+        finalresult: finalResult,
+        timeTaken: formatTimeForSubmission(timeTakenSeconds), // Now a stable reference
+        submittedAt: new Date().toISOString(),
+        // Additional metadata
+        startTime: quizStartTimeRef.current ? new Date(quizStartTimeRef.current).toISOString() : null,
+        endTime: quizEndTimeRef.current ? new Date(quizEndTimeRef.current).toISOString() : null,
+        timeTakenSeconds: timeTakenSeconds
+      };
+
+      console.log("=== SUBMISSION DATA ===");
+      console.log("Result data:", resultData);
+
+      // Show summary first
+      setShowSummary(true);
+      setShowSubmitConfirm(false);
+
+      // Submit to API
+      const submitRes = await fetch("/api/results/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(resultData)
+      });
+
+      if (!submitRes.ok) {
+        const errorText = await submitRes.text();
+        console.error('Failed to submit results:', errorText);
+      } else {
+        const responseData = await submitRes.json();
+        console.log('Submit response:', responseData);
+
+        if (responseData.attemptsDecreased) {
+          console.log('✅ Attempts successfully decreased');
+          console.log('Remaining attempts:', responseData.remainingAttempts);
+        } else {
+          console.log('❌ Attempts were NOT decreased');
+          console.log('Reason:', responseData.error || 'Unknown');
+        }
+      }
+    } catch (err) {
+      console.error('Error submitting results:', err);
     }
-  };
+  }, [
+    group, test, name, questions, // <--- Change questions.length to questions here
+  calculateScore, getQuestionStatistics, calculateTimeTaken, formatTimeForSubmission,
+  quizStartTimeRef, quizEndTimeRef, timerIntervalRef,
+  setActualTimeTaken, setScore, setShowSummary, setShowSubmitConfirm
+  ]);
 
-  // Add event listener for browser back button
-  window.addEventListener('popstate', handlePopState);
-  
-  // Push initial state to prevent back navigation
-  window.history.pushState(null, null, window.location.pathname);
 
-  return () => {
-    window.removeEventListener('popstate', handlePopState);
-  };
-}, [questions.length, showSummary, router]);
-
-const handleBackToHome = async () => {
-  try {
-    // Clear ALL quiz-related data from localStorage
-    localStorage.removeItem("quizGroup");
-    localStorage.removeItem("quizTest");
-    localStorage.removeItem("Group");
-    localStorage.removeItem("Test");
-    
-    // Clear tab tracking
-    const currentTabKey = `quiz_tab_${group}_${test}`;
-    localStorage.removeItem(currentTabKey);
-    
-    // Clear timer interval
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
-      timerIntervalRef.current = null;
-    }
-    
-    // Optional: Mark test as completed/attempted in backend
-    const userData = {
-      name: localStorage.getItem('username') || name,
-      group: decodeURIComponent(group),
-      test: decodeURIComponent(test),
-      status: 'completed',
-      completedAt: new Date().toISOString()
-    };
-
-    // Send completion status to backend (optional)
-    
-    // Clear browser history to prevent back navigation
-    window.history.replaceState(null, null, '/dashboard');
-    
-    // Redirect to dashboard
-    router.replace('/dashboard'); // Use replace instead of push
-  } catch (error) {
-    console.error('Error during back to home:', error);
-    // Fallback: still clear localStorage and redirect
-    localStorage.removeItem("quizGroup");
-    localStorage.removeItem("quizTest");
-    localStorage.removeItem("Group");
-    localStorage.removeItem("Test");
-    
-    // Clear tab tracking
-    const currentTabKey = `quiz_tab_${group}_${test}`;
-    localStorage.removeItem(currentTabKey);
-    
-    window.history.replaceState(null, null, '/dashboard');
-    router.replace('/dashboard');
-  }
-};
   useEffect(() => {
     if (questions.length === 0) return;
 
@@ -239,7 +307,7 @@ const handleBackToHome = async () => {
       setTimer(prev => {
         if (prev <= 0) {
           clearInterval(timerIntervalRef.current);
-          handleSubmit();
+          handleSubmit(); // Now stable and in dependencies
           return 0;
         }
         return prev - 1;
@@ -252,7 +320,92 @@ const handleBackToHome = async () => {
         clearInterval(timerIntervalRef.current);
       }
     };
-  }, [questions.length]);
+  }, [questions.length, handleSubmit]); // Added handleSubmit to dependencies
+
+
+  // --- Rest of your existing code ---
+
+  useEffect(() => {
+    // Prevent back navigation when quiz is active
+    const handlePopState = (event) => {
+      if (questions.length > 0 && !showSummary) {
+        event.preventDefault();
+        const confirmLeave = window.confirm(
+          "Are you sure you want to leave the quiz? Your progress will be lost."
+        );
+        if (confirmLeave) {
+          // Clear localStorage and redirect
+          localStorage.removeItem("quizGroup");
+          localStorage.removeItem("quizTest");
+          router.push('/dashboard');
+        } else {
+          // Push the current state back to prevent navigation
+          window.history.pushState(null, null, window.location.pathname);
+        }
+      }
+    };
+
+    // Add event listener for browser back button
+    window.addEventListener('popstate', handlePopState);
+
+    // Push initial state to prevent back navigation
+    window.history.pushState(null, null, window.location.pathname);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [questions.length, showSummary, router]);
+
+  const handleBackToHome = async () => {
+    try {
+      // Clear ALL quiz-related data from localStorage
+      localStorage.removeItem("quizGroup");
+      localStorage.removeItem("quizTest");
+      localStorage.removeItem("Group");
+      localStorage.removeItem("Test");
+
+      // Clear tab tracking
+      const currentTabKey = `quiz_tab_${group}_${test}`;
+      localStorage.removeItem(currentTabKey);
+
+      // Clear timer interval
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+
+      // Optional: Mark test as completed/attempted in backend
+      const userData = {
+        name: localStorage.getItem('username') || name,
+        group: decodeURIComponent(group),
+        test: decodeURIComponent(test),
+        status: 'completed',
+        completedAt: new Date().toISOString()
+      };
+
+      // Send completion status to backend (optional)
+
+      // Clear browser history to prevent back navigation
+      window.history.replaceState(null, null, '/dashboard');
+
+      // Redirect to dashboard
+      router.replace('/dashboard'); // Use replace instead of push
+    } catch (error) {
+      console.error('Error during back to home:', error);
+      // Fallback: still clear localStorage and redirect
+      localStorage.removeItem("quizGroup");
+      localStorage.removeItem("quizTest");
+      localStorage.removeItem("Group");
+      localStorage.removeItem("Test");
+
+      // Clear tab tracking
+      const currentTabKey = `quiz_tab_${group}_${test}`;
+      localStorage.removeItem(currentTabKey);
+
+      window.history.replaceState(null, null, '/dashboard');
+      router.replace('/dashboard');
+    }
+  };
 
   // Prevent page refresh/close
   useEffect(() => {
@@ -300,139 +453,6 @@ const handleBackToHome = async () => {
     setIndex(questionIndex);
   };
 
-  const calculateScore = () => {
-    let correctAnswers = 0;
-    questions.forEach((question, questionIndex) => {
-      const selectedAnswer = selectedOption[questionIndex];
-      if (selectedAnswer && question.correct) {
-        // Get the correct answer based on the correct property
-        const correctAnswerIndex = question.correct.charCodeAt(0) - 65; // Convert 'A', 'B', 'C', 'D' to 0, 1, 2, 3
-        const correctAnswer = question.options[correctAnswerIndex];
-        
-        if (selectedAnswer === correctAnswer) {
-          correctAnswers++;
-        }
-      }
-    });
-    return correctAnswers;
-  };
-
-  const getQuestionStatistics = () => {
-    const attempted = Object.keys(selectedOption).filter(key => selectedOption[key] !== undefined).length;
-    const unattempted = questions.length - attempted;
-    const marked = Object.keys(markedQuestions).filter(key => markedQuestions[key]).length;
-    
-    return {
-      attempted,
-      unattempted,
-      marked,
-      total: questions.length
-    };
-  };
-
-  const calculateTimeTaken = () => {
-    if (quizStartTimeRef.current) {
-      const endTime = quizEndTimeRef.current || Date.now();
-      const timeTakenMs = endTime - quizStartTimeRef.current;
-      return Math.floor(timeTakenMs / 1000); // Convert to seconds
-    }
-    // Fallback to timer-based calculation
-    return 7200 - timer;
-  };
-
-  const handleSubmit = async () => {
-    try {
-      // Stop the timer immediately when submit is clicked
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-        timerIntervalRef.current = null;
-      }
-
-      // Record end time
-      quizEndTimeRef.current = Date.now();
-
-      // Calculate accurate time taken
-      const timeTakenSeconds = calculateTimeTaken();
-      setActualTimeTaken(timeTakenSeconds);
-
-      // Calculate score
-      const calculatedScore = calculateScore();
-      setScore(calculatedScore);
-
-      // Get question statistics
-      const stats = getQuestionStatistics();
-
-      // Calculate percentage
-      const percentage = questions.length > 0 ? ((calculatedScore / questions.length) * 100) : 0;
-
-      // Determine pass/fail (assuming 40% is passing)
-      const passingPercentage = 40;
-      const finalResult = percentage >= passingPercentage ? "PASS" : "FAIL";
-
-      // Get username
-      const actualUsername = localStorage.getItem('username') || name;
-
-      console.log("=== SUBMIT CALCULATIONS ===");
-      console.log("Questions total:", questions.length);
-      console.log("Attempted:", stats.attempted);
-      console.log("Unattempted:", stats.unattempted);
-      console.log("Correct answers:", calculatedScore);
-      console.log("Percentage:", percentage.toFixed(2));
-      console.log("Time taken (seconds):", timeTakenSeconds);
-      console.log("Final result:", finalResult);
-
-      // Prepare result data
-      const resultData = {
-        name: actualUsername,
-        group: decodeURIComponent(group),
-        test: decodeURIComponent(test),
-        score: calculatedScore,
-        attempted: stats.attempted,
-        unattempted: stats.unattempted,
-        total: questions.length,
-        percentage: percentage.toFixed(2),
-        finalresult: finalResult,
-        timeTaken: formatTimeForSubmission(timeTakenSeconds),
-        submittedAt: new Date().toISOString(),
-        // Additional metadata
-        startTime: new Date(quizStartTimeRef.current).toISOString(),
-        endTime: new Date(quizEndTimeRef.current).toISOString(),
-        timeTakenSeconds: timeTakenSeconds
-      };
-
-      console.log("=== SUBMISSION DATA ===");
-      console.log("Result data:", resultData);
-
-      // Show summary first
-      setShowSummary(true);
-      setShowSubmitConfirm(false);
-
-      // Submit to API
-      const submitRes = await fetch("/api/results/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(resultData)
-      });
-
-      if (!submitRes.ok) {
-        const errorText = await submitRes.text();
-        console.error('Failed to submit results:', errorText);
-      } else {
-        const responseData = await submitRes.json();
-        console.log('Submit response:', responseData);
-
-        if (responseData.attemptsDecreased) {
-          console.log('✅ Attempts successfully decreased');
-          console.log('Remaining attempts:', responseData.remainingAttempts);
-        } else {
-          console.log('❌ Attempts were NOT decreased');
-          console.log('Reason:', responseData.error || 'Unknown');
-        }
-      }
-    } catch (err) {
-      console.error('Error submitting results:', err);
-    }
-  };
 
   const getQuestionStats = () => {
     const answered = Object.values(status).filter(s => s === 'answered' || s === 'answered-marked').length;
@@ -492,13 +512,13 @@ const handleBackToHome = async () => {
     return (
       <div className="flex justify-center items-center h-screen bg-gray-100">
         <div className="text-center">
-  <button
-    onClick={handleBackToHome}
-    className="bg-blue-500 text-white px-8 py-3 rounded-lg hover:bg-blue-600 transition-colors text-lg font-semibold"
-  >
-    Back to Dashboard
-  </button>
-</div>
+          <button
+            onClick={handleBackToHome}
+            className="bg-blue-500 text-white px-8 py-3 rounded-lg hover:bg-blue-600 transition-colors text-lg font-semibold"
+          >
+            Back to Dashboard
+          </button>
+        </div>
       </div>
     );
   }
@@ -641,7 +661,7 @@ const handleBackToHome = async () => {
           <div className="mb-6 bg-blue-50 p-4 rounded-lg">
             <h3 className="font-semibold mb-2">Time Information</h3>
             <p className="text-sm text-gray-700">
-              Time taken so far: {formatElapsedTime(timeTakenSoFar)} 
+              Time taken so far: {formatElapsedTime(timeTakenSoFar)}
               <span className="text-gray-500 ml-2">({formatTimeForSubmission(timeTakenSoFar)})</span>
             </p>
             <p className="text-sm text-gray-700">
@@ -812,175 +832,110 @@ const handleBackToHome = async () => {
           </div>
 
           {/* Action Buttons */}
-      <div className="border-t border-gray-300 p-4 bg-gray-50">
-    <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
-            <button
-                onClick={markReview}
-                className="px-4 py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 transition-colors w-full sm:w-auto"
-            >
-                Mark For Review & Next
-            </button>
-            <button
-                onClick={clearResponse}
-                className="px-4 py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 transition-colors w-full sm:w-auto"
-            >
-                Clear Response
-            </button>
-        </div>
-        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
-            <button
-                onClick={() => {
+          <div className="border-t border-gray-300 p-4 bg-gray-50">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+                <button
+                  onClick={markReview}
+                  className="px-4 py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 transition-colors w-full sm:w-auto"
+                >
+                  Mark For Review & Next
+                </button>
+                <button
+                  onClick={clearResponse}
+                  className="px-4 py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 transition-colors w-full sm:w-auto"
+                >
+                  Clear Response
+                </button>
+              </div>
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+                <button
+                  onClick={() => {
                     // Stop timer when confirmation dialog is shown
                     if (timerIntervalRef.current) {
-                        clearInterval(timerIntervalRef.current);
-                        timerIntervalRef.current = null;
+                      clearInterval(timerIntervalRef.current);
+                      timerIntervalRef.current = null;
                     }
                     setShowSubmitConfirm(true);
-                }}
-                className="px-6 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors w-full sm:w-auto"
-            >
-                Submit
+                  }}
+                  className="px-6 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors w-full sm:w-auto"
+                >
+                  Submit
+                </button>
+                {/* Previous and Next buttons are likely here */}
+                <button
+                  onClick={prevQuestion}
+                  disabled={index === 0}
+                  className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600 transition-colors w-full sm:w-auto"
+                >
+                  <ChevronLeft className="inline-block mr-2" size={16} /> Previous
+                </button>
+                <button
+                  onClick={nextQuestion}
+                  disabled={index === questions.length - 1}
+                  className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600 transition-colors w-full sm:w-auto"
+                >
+                  Next <ChevronRight className="inline-block ml-2" size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Right Panel (Question Palette, etc.) */}
+        <div className={`fixed right-0 top-0 h-full bg-white shadow-lg w-80 overflow-y-auto transform transition-transform duration-300 ${showRightPanel ? 'translate-x-0' : 'translate-x-full'}`}>
+          <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+            <h3 className="font-bold text-lg">Question Palette</h3>
+            <button onClick={() => setShowRightPanel(false)} className="text-gray-500 hover:text-gray-700">
+              <ChevronRight size={24} />
             </button>
-            <button
-                onClick={nextQuestion}
-                className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors w-full sm:w-auto"
-            >
-                Save & Next
-            </button>
-        </div>
-    </div>
-</div>
-        </div>
-
-        {/* Right Panel */}
-        <div
-  className={`fixed right-0 top-0 h-full bg-white border-l border-gray-300 transition-transform duration-300 z-50
-    ${showRightPanel ? 'translate-x-0' : 'translate-x-full'}
-    w-full sm:w-80`}
->
-  {/* Toggle Button */}
-  <button
-    onClick={() => setShowRightPanel(!showRightPanel)}
-    className="absolute -left-8 top-1/2 transform -translate-y-1/2 bg-blue-500 text-white p-2 rounded-l hover:bg-blue-600 transition-colors"
-  >
-    {showRightPanel ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-  </button>
-
-  <div className="h-full overflow-y-auto">
-    {/* User Info */}
-    <div className="p-4 border-b border-gray-300 flex items-center space-x-4">
-      <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
-        <User className="w-8 h-8 text-gray-600" />
-      </div>
-      <div>
-        <div className="font-semibold text-gray-800">S</div>
-        <div className="text-sm text-gray-600">{name}</div>
-      </div>
-    </div>
-
-    {/* Status Legend */}
-    <div className="p-4 border-b border-gray-300">
-      <div className="grid grid-cols-2 gap-3 text-xs">
-        <div className="flex items-center space-x-2">
-          <div className="w-6 h-6 bg-gray-300 rounded text-center leading-6 font-semibold text-gray-700">
-            {stats.notVisited}
           </div>
-          <span>Not Visited</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-6 h-6 bg-red-500 text-white rounded text-center leading-6 font-semibold">
-            {stats.notAnswered}
+          <div className="p-4 grid grid-cols-5 gap-2">
+            {questions.map((_, qIdx) => (
+              <button
+                key={qIdx}
+                onClick={() => goToQuestion(qIdx)}
+                className={`w-10 h-10 flex items-center justify-center rounded-full text-sm font-semibold
+                  ${getQuestionStatusClass(qIdx)}
+                  ${qIdx === index ? 'ring-4 ring-blue-500 ring-opacity-70' : ''}
+                `}
+                title={`Question ${qIdx + 1}: ${status[qIdx] || 'Not Visited'}`}
+              >
+                {qIdx + 1}
+              </button>
+            ))}
           </div>
-          <span>Not Answered</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-6 h-6 bg-green-500 text-white rounded text-center leading-6 font-semibold">
-            {stats.answered}
-          </div>
-          <span>Answered</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-6 h-6 bg-yellow-500 text-white rounded text-center leading-6 font-semibold">
-            {stats.review}
-          </div>
-          <span>Marked For Review</span>
-        </div>
-      </div>
-      <div className="mt-3 text-xs text-gray-500">
-        <div className="flex items-center space-x-2">
-          <div className="w-6 h-6 bg-purple-500 text-white rounded text-center leading-6 font-semibold">
-            {stats.answeredMarked}
-          </div>
-          <span>Answered But Marked For Review</span>
-        </div>
-      </div>
-    </div>
 
-    {/* Question Navigator */}
-    <div className="p-4">
-      <div className="bg-blue-500 text-white p-2 text-center font-semibold rounded-t">
-        {displayText}
-      </div>
-      <div className="bg-blue-300 text-white p-2 text-center font-semibold">
-        Choose Question
-      </div>
-      <div className="bg-gray-50 p-4 rounded-b max-h-64 overflow-y-auto">
-        <div className="grid grid-cols-7 gap-2">
-          {questions.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => goToQuestion(i)}
-              className={`w-8 h-8 rounded text-sm font-semibold transition-all ${
-                i === index
-                  ? 'border-2 border-blue-600 bg-blue-100 text-blue-800'
-                  : getQuestionStatusClass(i)
-              } hover:scale-105`}
-            >
-              {i + 1}
-            </button>
-          ))}
+          <div className="p-4 border-t border-gray-200">
+            <h3 className="font-bold text-lg mb-4">Legend</h3>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="flex items-center">
+                <span className="w-4 h-4 bg-green-500 rounded-full mr-2"></span> Answered ({stats.answered})
+              </div>
+              <div className="flex items-center">
+                <span className="w-4 h-4 bg-red-500 rounded-full mr-2"></span> Not Answered ({stats.notAnswered})
+              </div>
+              <div className="flex items-center">
+                <span className="w-4 h-4 bg-yellow-500 rounded-full mr-2"></span> Marked for Review ({stats.review})
+              </div>
+              <div className="flex items-center">
+                <span className="w-4 h-4 bg-purple-500 rounded-full mr-2"></span> Answered & Marked ({stats.answeredMarked})
+              </div>
+              <div className="flex items-center">
+                <span className="w-4 h-4 bg-gray-300 rounded-full mr-2"></span> Not Visited ({stats.notVisited})
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
 
-    {/* Navigation Buttons */}
-    <div className="p-4 border-t border-gray-300">
-      <div className="flex space-x-2">
-        <button
-          onClick={prevQuestion}
-          disabled={index === 0}
-          className={`flex-1 py-2 px-4 rounded font-semibold transition-colors ${
-            index === 0
-              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-              : 'bg-gray-500 text-white hover:bg-gray-600'
-          }`}
-        >
-          Previous
-        </button>
-        <button
-          onClick={nextQuestion}
-          disabled={index === questions.length - 1}
-          className={`flex-1 py-2 px-4 rounded font-semibold transition-colors ${
-            index === questions.length - 1
-              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-              : 'bg-blue-500 text-white hover:bg-blue-600'
-          }`}
-        >
-          Next
-        </button>
-      </div>
-    </div>
-
-    {/* Timer Display */}
-    <div className="p-4 border-t border-gray-300">
-      <div className="flex items-center space-x-2 text-red-600">
-        <Clock size={20} />
-        <span className="font-semibold">Time Left: {formatTime(timer)}</span>
-      </div>
-    </div>
-  </div>
-</div>
+        {/* Toggle button for right panel */}
+        {!showRightPanel && (
+          <button
+            onClick={() => setShowRightPanel(true)}
+            className="fixed right-0 top-1/2 -translate-y-1/2 bg-blue-500 text-white p-2 rounded-l-lg shadow-lg z-40"
+          >
+            <ChevronLeft size={20} />
+          </button>
+        )}
       </div>
     </div>
   );

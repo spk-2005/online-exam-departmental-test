@@ -1,6 +1,7 @@
 // components/PaymentForm.js
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/router';
+import Image from 'next/image';
 
 export default function PaymentForm() {
   const [formData, setFormData] = useState({
@@ -352,7 +353,7 @@ export default function PaymentForm() {
               >
                 {previewUrl ? (
                   <div style={styles.previewContainer}>
-                    <img 
+                    <Image
                       src={previewUrl} 
                       alt="Preview" 
                       style={styles.previewImage}
