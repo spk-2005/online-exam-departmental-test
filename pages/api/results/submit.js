@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     console.log(`Processing attempt decrease for user: ${name}, group: ${group}, test: ${test}`);
     
     // Find the user and decrease their attempts
-    const user = await User.findOne({ username: name });
+    const user = await User.findOne({ username: name }).lean();
     
     if (user) {
       console.log(`Found user: ${user.username}`);
