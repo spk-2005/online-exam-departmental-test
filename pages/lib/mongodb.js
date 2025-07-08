@@ -1,4 +1,3 @@
-// In D:\online-departmental-tests-app\frontend\lib\mongodb.js
 import mongoose from "mongoose";
 
 const connectMongo = async () => {
@@ -7,12 +6,12 @@ const connectMongo = async () => {
     return;
   }
 
-  await mongoose.connect(process.env.MONGO_URI, {
-    // These lines should be removed or commented out:
-    // useNewUrlParser: true,
-    // useUnifiedTopology: true,
-  });
+  const uri = process.env.MONGO_URI;
+  if (!uri) {
+    throw new Error("❌ MONGO_URI environment variable not set.");
+  }
 
+  await mongoose.connect(uri);
   console.log("✅ Connected to MongoDB");
 };
 
