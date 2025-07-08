@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     await connectMongo();
     console.log('MongoDB connected successfully');
     
-    const questions = await Test.find({ group, test });
+    const questions = await Test.find({ group, test }).lean();
     console.log('Questions found:', questions.length);
     
     res.status(200).json(questions);

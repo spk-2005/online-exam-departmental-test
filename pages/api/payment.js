@@ -69,7 +69,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       await connectMongo();
-      const payments = await Payment.find({}).sort({ createdAt: -1 });
+      const payments = await Payment.find({}).sort({ createdAt: -1 }).lean();
       res.status(200).json({ success: true, data: payments });
     } catch (error) {
       console.error('Error fetching payments:', error);
@@ -110,7 +110,7 @@ export default async function handler(req, res) {
     }
 
     // Check if transaction ID already exists
-    const existingPayment = await Payment.findOne({ transactionId: transactionId.trim() });
+    const existingPayment = await Payment.findOne({ transactionId: transactionId.trim() }).lean();
     if (existingPayment) {
       return res.status(400).json({ 
         success: false,

@@ -24,13 +24,13 @@ export default async function handler(req, res) {
       console.log(`User groupAttempts:`, JSON.stringify(user.groupAttempts, null, 2));
       
       // Find the group in user's groupAttempts
-      const groupIndex = user.groupAttempts.findIndex(g => g.group === group);
+      const groupIndex = user.groupAttempts.findIndex(g => g.group === group).lean();
       
       if (groupIndex !== -1) {
         console.log(`Found group at index: ${groupIndex}`);
         
         // Find the test in the group's tests
-        const testIndex = user.groupAttempts[groupIndex].tests.findIndex(t => t.testName === test);
+        const testIndex = user.groupAttempts[groupIndex].tests.findIndex(t => t.testName === test).lean();
         
         if (testIndex !== -1) {
           console.log(`Found test at index: ${testIndex}`);

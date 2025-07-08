@@ -76,8 +76,8 @@ export default function AvailableTests() {
 
   const handleStartTest = async (group, testName) => {
     // Frontend check: Only proceed if attempts are remaining
-    const groupToUpdate = attemptsData.find(g => g.group === group);
-    const testToUpdate = groupToUpdate?.tests.find(t => t.testName === testName);
+    const groupToUpdate = attemptsData.find(g => g.group === group).lean();
+    const testToUpdate = groupToUpdate?.tests.find(t => t.testName === testName).lean();
 
     if (!testToUpdate || testToUpdate.remainingAttempts <= 0) {
       setError("No attempts left for this test or test not found.");

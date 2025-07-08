@@ -49,7 +49,7 @@ export default async function handler(req, res) {
     const skip = pageSize > 0 ? (parseInt(page) - 1) * pageSize : 0;
 
     // Execute query
-    let query = Result.find(filter).sort(sort);
+    let query = Result.find(filter).lean().sort(sort);
     
     if (pageSize > 0) {
       query = query.skip(skip).limit(pageSize);
@@ -100,7 +100,7 @@ export async function getResultsWithPagination(req, res) {
     const pageSize = limit ? parseInt(limit) : 0;
     const skip = pageSize > 0 ? (parseInt(page) - 1) * pageSize : 0;
 
-    let query = Result.find(filter).sort(sort);
+    let query = Result.find(filter).lean().sort(sort);
     
     if (pageSize > 0) {
       query = query.skip(skip).limit(pageSize);
