@@ -346,7 +346,7 @@ export default function PaymentForm() {
                             />
                             {previewUrl ? (
                                 <div className="relative w-full h-full max-h-48">
-                                    <Image
+                                    <img
                                         src={previewUrl}
                                         alt="Screenshot preview"
                                         layout="fill"
