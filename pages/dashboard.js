@@ -241,6 +241,8 @@ if (typeof document !== 'undefined') {
       
       .dashboard-title {
         font-size: 24px !important;
+        background-color:black;
+        
       }
       
       .dashboard-logout-button {

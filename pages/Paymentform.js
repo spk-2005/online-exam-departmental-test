@@ -4,617 +4,404 @@ import { useRouter } from 'next/router';
 import Image from 'next/image';
 
 export default function PaymentForm() {
-  const [formData, setFormData] = useState({
-    username: '',
-    name: '',
-    phoneNumber: '',
-    transactionId: '',
-    selectedGroup: '',
-    screenshot: null
-  });
-  
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [successMessage, setSuccessMessage] = useState('');
-  const [previewUrl, setPreviewUrl] = useState(null);
-  
-  const fileInputRef = useRef(null);
-  const router = useRouter();
+    // Define the full list of groups here, as PaymentRedirect no longer passes a selectedGroup.
+    const groups = [
+        { id: 1, name: 'EOT 141' },
+        { id: 2, name: 'GOT 88' },
+        { id: 3, name: 'GOT 97' },
+        { id: 4, name: 'CODE 08' },
+        { id: 5, name: 'CODE 10' },
+        { id: 6, name: 'CODE 146' },
+        { id: 7, name: 'CODE 148' }
+    ];
 
-  // Handle input changes
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
+    const [formData, setFormData] = useState({
+        username: '',
+        name: '',
+        phoneNumber: '',
+        transactionId: '',
+        selectedGroup: '', // No initial prop, starts empty
+        screenshot: null
+    });
 
-  // Handle file selection
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        setErrors(prev => ({
-          ...prev,
-          screenshot: 'Please select an image file'
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errors, setErrors] = useState({});
+    const [successMessage, setSuccessMessage] = useState('');
+    const [previewUrl, setPreviewUrl] = useState(null);
+
+    const fileInputRef = useRef(null);
+    const router = useRouter();
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
         }));
-        return;
-      }
-      
-      // Validate file size (5MB limit)
-      if (file.size > 5 * 1024 * 1024) {
-        setErrors(prev => ({
-          ...prev,
-          screenshot: 'File size must be less than 5MB'
+
+        if (errors[name]) {
+            setErrors(prev => ({
+                ...prev,
+                [name]: ''
+            }));
+        }
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (!file.type.startsWith('image/')) {
+                setErrors(prev => ({
+                    ...prev,
+                    screenshot: 'Please select an image file (PNG, JPG, GIF)'
+                }));
+                setPreviewUrl(null);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                setErrors(prev => ({
+                    ...prev,
+                    screenshot: 'File size must be less than 5MB'
+                }));
+                setPreviewUrl(null);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+                return;
+            }
+
+            setFormData(prev => ({
+                ...prev,
+                screenshot: file
+            }));
+
+            const url = URL.createObjectURL(file);
+            setPreviewUrl(url);
+
+            setErrors(prev => ({
+                ...prev,
+                screenshot: ''
+            }));
+        }
+    };
+
+    const removeFile = () => {
+        setFormData(prev => ({
+            ...prev,
+            screenshot: null
         }));
-        return;
-      }
-      
-      setFormData(prev => ({
-        ...prev,
-        screenshot: file
-      }));
-      
-      // Create preview URL
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-      
-      // Clear error
-      setErrors(prev => ({
-        ...prev,
-        screenshot: ''
-      }));
-    }
-  };
-
-  // Remove selected file
-  const removeFile = () => {
-    setFormData(prev => ({
-      ...prev,
-      screenshot: null
-    }));
-    setPreviewUrl(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  // Validate form
-  const validateForm = () => {
-    const newErrors = {};
-    
-    if (!formData.username.trim()) {
-      newErrors.username = 'Username is required';
-    } else if (formData.username.length > 50) {
-      newErrors.username = 'Username cannot exceed 50 characters';
-    }
-    
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
-    } else if (formData.name.length > 100) {
-      newErrors.name = 'Name cannot exceed 100 characters';
-    }
-    
-    if (!formData.phoneNumber.trim()) {
-      newErrors.phoneNumber = 'Phone number is required';
-    } else if (!/^\d{10,15}$/.test(formData.phoneNumber)) {
-      newErrors.phoneNumber = 'Phone number must be between 10-15 digits';
-    }
-    
-    if (!formData.transactionId.trim()) {
-      newErrors.transactionId = 'Transaction ID is required';
-    } else if (formData.transactionId.length > 50) {
-      newErrors.transactionId = 'Transaction ID cannot exceed 50 characters';
-    }
-    
-    if (!formData.selectedGroup) {
-      newErrors.selectedGroup = 'Please select a group';
-    } else if (![1, 2, 3, 4].includes(parseInt(formData.selectedGroup))) {
-      newErrors.selectedGroup = 'Please select a valid group';
-    }
-    
-    if (!formData.screenshot) {
-      newErrors.screenshot = 'Payment screenshot is required';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  // Handle form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-    
-    setIsSubmitting(true);
-    setSuccessMessage('');
-    
-    try {
-      // Create FormData for file upload
-      const formDataToSend = new FormData();
-      formDataToSend.append('username', formData.username.trim());
-      formDataToSend.append('name', formData.name.trim());
-      formDataToSend.append('phoneNumber', formData.phoneNumber.trim());
-      formDataToSend.append('transactionId', formData.transactionId.trim());
-      formDataToSend.append('selectedGroup', formData.selectedGroup);
-      formDataToSend.append('screenshot', formData.screenshot);
-      
-      const response = await fetch('/api/payment', {
-        method: 'POST',
-        body: formDataToSend
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        setSuccessMessage('Payment details submitted successfully!');
-        
-        // Reset form
-        setFormData({
-          username: '',
-          name: '',
-          phoneNumber: '',
-          transactionId: '',
-          selectedGroup: '',
-          screenshot: null
-        });
         setPreviewUrl(null);
         if (fileInputRef.current) {
-          fileInputRef.current.value = '';
+            fileInputRef.current.value = '';
         }
-        
-        // Redirect after success (optional)
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 2000);
-        
-      } else {
-        // Handle API errors
-        if (data.details) {
-          // MongoDB validation errors
-          const apiErrors = {};
-          data.details.forEach(error => {
-            if (error.includes('Username')) apiErrors.username = error;
-            if (error.includes('Name')) apiErrors.name = error;
-            if (error.includes('Phone')) apiErrors.phoneNumber = error;
-            if (error.includes('Transaction')) apiErrors.transactionId = error;
-            if (error.includes('Group')) apiErrors.selectedGroup = error;
-          });
-          setErrors(apiErrors);
-        } else {
-          // Single error message
-          setErrors({ general: data.error || 'An error occurred' });
-        }
-      }
-      
-    } catch (error) {
-      console.error('Error submitting payment:', error);
-      
-      // Handle network errors and non-JSON responses
-      if (error.message.includes('JSON') || error.message.includes('token')) {
-        setErrors({ general: 'Server error. Please check if the API endpoint exists and try again.' });
-      } else {
-        setErrors({ general: 'Network error. Please try again.' });
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    };
 
-  return (
-    <div style={styles.container}>
-      <div style={styles.formCard}>
-        <h2 style={styles.title}>Payment Submission</h2>
-        <p style={styles.subtitle}>Please fill in your payment details and upload a screenshot</p>
-        
-        {successMessage && (
-          <div style={styles.successMessage}>
-            {successMessage}
-          </div>
-        )}
-        
-        {errors.general && (
-          <div style={styles.errorMessage}>
-            {errors.general}
-          </div>
-        )}
-        
-        <form onSubmit={handleSubmit} style={styles.form}>
-          {/* Username Field */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Username *</label>
-            <input
-              type="text"
-              name="username"
-              value={formData.username}
-              onChange={handleInputChange}
-              style={{
-                ...styles.input,
-                ...(errors.username ? styles.inputError : {})
-              }}
-              placeholder="Enter your username"
-              maxLength={50}
-            />
-            {errors.username && (
-              <span style={styles.errorText}>{errors.username}</span>
-            )}
-          </div>
-          
-          {/* Name Field */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Full Name *</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              style={{
-                ...styles.input,
-                ...(errors.name ? styles.inputError : {})
-              }}
-              placeholder="Enter your full name"
-              maxLength={100}
-            />
-            {errors.name && (
-              <span style={styles.errorText}>{errors.name}</span>
-            )}
-          </div>
-          
-          {/* Phone Number Field */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Phone Number *</label>
-            <input
-              type="tel"
-              name="phoneNumber"
-              value={formData.phoneNumber}
-              onChange={handleInputChange}
-              style={{
-                ...styles.input,
-                ...(errors.phoneNumber ? styles.inputError : {})
-              }}
-              placeholder="Enter your phone number (10-15 digits)"
-              maxLength={15}
-            />
-            {errors.phoneNumber && (
-              <span style={styles.errorText}>{errors.phoneNumber}</span>
-            )}
-          </div>
-          
-          {/* Transaction ID Field */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Transaction ID *</label>
-            <input
-              type="text"
-              name="transactionId"
-              value={formData.transactionId}
-              onChange={handleInputChange}
-              style={{
-                ...styles.input,
-                ...(errors.transactionId ? styles.inputError : {})
-              }}
-              placeholder="Enter transaction ID"
-              maxLength={50}
-            />
-            {errors.transactionId && (
-              <span style={styles.errorText}>{errors.transactionId}</span>
-            )}
-          </div>
-          
-          {/* Group Selection */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Select Group *</label>
-            <select
-              name="selectedGroup"
-              value={formData.selectedGroup}
-              onChange={handleInputChange}
-              style={{
-                ...styles.select,
-                ...(errors.selectedGroup ? styles.inputError : {})
-              }}
-            >
-              <option value="">Choose a group</option>
-              <option value="1">Group 1</option>
-              <option value="2">Group 2</option>
-              <option value="3">Group 3</option>
-              <option value="4">Group 4</option>
-            </select>
-            {errors.selectedGroup && (
-              <span style={styles.errorText}>{errors.selectedGroup}</span>
-            )}
-          </div>
-          
-          {/* File Upload */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Payment Screenshot *</label>
-            <div style={styles.fileUploadContainer}>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/*"
-                style={styles.fileInput}
-              />
-              <div 
-                onClick={() => fileInputRef.current?.click()}
-                style={styles.fileDropZone}
-              >
-                {previewUrl ? (
-                  <div style={styles.previewContainer}>
-                    <Image
-                      src={previewUrl} 
-                      alt="Preview" 
-                      style={styles.previewImage}
-                    />
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeFile();
-                      }}
-                      style={styles.removeButton}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ) : (
-                  <div style={styles.uploadPlaceholder}>
-                    <div style={styles.uploadIcon}>📁</div>
-                    <p>Click to upload payment screenshot</p>
-                    <p style={styles.uploadHint}>PNG, JPG, GIF up to 5MB</p>
-                  </div>
+    const validateForm = () => {
+        const newErrors = {};
+
+        if (!formData.username.trim()) {
+            newErrors.username = 'Username is required';
+        } else if (formData.username.length > 50) {
+            newErrors.username = 'Username cannot exceed 50 characters';
+        }
+
+        if (!formData.name.trim()) {
+            newErrors.name = 'Name is required';
+        } else if (formData.name.length > 100) {
+            newErrors.name = 'Name cannot exceed 100 characters';
+        }
+
+        if (!formData.phoneNumber.trim()) {
+            newErrors.phoneNumber = 'Phone number is required';
+        } else if (!/^\d{10,15}$/.test(formData.phoneNumber)) {
+            newErrors.phoneNumber = 'Phone number must be between 10-15 digits';
+        }
+
+        if (!formData.transactionId.trim()) {
+            newErrors.transactionId = 'Transaction ID is required';
+        } else if (formData.transactionId.length > 50) {
+            newErrors.transactionId = 'Transaction ID cannot exceed 50 characters';
+        }
+
+        const validGroupIds = groups.map(group => group.id); // Get valid IDs from the local groups array
+        if (!formData.selectedGroup || !validGroupIds.includes(parseInt(formData.selectedGroup))) {
+            newErrors.selectedGroup = 'Please select a valid test group';
+        }
+
+        if (!formData.screenshot) {
+            newErrors.screenshot = 'Payment screenshot is required';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        if (!validateForm()) {
+            return;
+        }
+
+        setIsSubmitting(true);
+        setSuccessMessage('');
+        setErrors({});
+
+        try {
+            const formDataToSend = new FormData();
+            formDataToSend.append('username', formData.username.trim());
+            formDataToSend.append('name', formData.name.trim());
+            formDataToSend.append('phoneNumber', formData.phoneNumber.trim());
+            formDataToSend.append('transactionId', formData.transactionId.trim());
+            formDataToSend.append('selectedGroup', formData.selectedGroup);
+            formDataToSend.append('screenshot', formData.screenshot);
+
+            const response = await fetch('/api/payment', {
+                method: 'POST',
+                body: formDataToSend
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setSuccessMessage('Payment details submitted successfully! Redirecting...');
+
+                setFormData({
+                    username: '',
+                    name: '',
+                    phoneNumber: '',
+                    transactionId: '',
+                    selectedGroup: '',
+                    screenshot: null
+                });
+                setPreviewUrl(null);
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                }
+
+                setTimeout(() => {
+                    router.push('/dashboard');
+                }, 2000);
+
+            } else {
+                if (data.details) {
+                    const apiErrors = {};
+                    data.details.forEach(error => {
+                        if (error.toLowerCase().includes('username')) apiErrors.username = error;
+                        else if (error.toLowerCase().includes('name')) apiErrors.name = error;
+                        else if (error.toLowerCase().includes('phone')) apiErrors.phoneNumber = error;
+                        else if (error.toLowerCase().includes('transaction')) apiErrors.transactionId = error;
+                        else if (error.toLowerCase().includes('group')) apiErrors.selectedGroup = error;
+                        else if (error.toLowerCase().includes('screenshot')) apiErrors.screenshot = error;
+                        else apiErrors.general = error;
+                    });
+                    setErrors(apiErrors);
+                } else {
+                    setErrors({ general: data.error || 'An unexpected error occurred. Please try again.' });
+                }
+            }
+        } catch (error) {
+            console.error('Error submitting payment:', error);
+            setErrors({ general: 'Network error or server unreachable. Please check your connection and try again.' });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-6 sm:p-8">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 text-center mb-3">
+                    Payment Verification Form
+                </h2>
+                <p className="text-base text-gray-600 text-center mb-6">
+                    Fill in your details and upload the payment screenshot to confirm your purchase.
+                </p>
+
+                {successMessage && (
+                    <div className="bg-green-100 text-green-800 p-3 rounded-lg mb-6 text-center text-sm">
+                        {successMessage}
+                    </div>
                 )}
-              </div>
+
+                {errors.general && (
+                    <div className="bg-red-100 text-red-800 p-3 rounded-lg mb-6 text-center text-sm">
+                        {errors.general}
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Username Field */}
+                    <div>
+                        <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            value={formData.username}
+                            onChange={handleInputChange}
+                            placeholder="Your registered username"
+                            maxLength={50}
+                            className={`block w-full px-4 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm
+                            ${errors.username ? 'border-red-500' : 'border-gray-300'}`}
+                        />
+                        {errors.username && (
+                            <p className="mt-1 text-xs text-red-600">{errors.username}</p>
+                        )}
+                    </div>
+
+                    {/* Name Field */}
+                    <div>
+                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                        <input
+                            type="text"
+                            id="name"
+                            name="name"
+                            value={formData.name}
+                            onChange={handleInputChange}
+                            placeholder="As per your ID"
+                            maxLength={100}
+                            className={`block w-full px-4 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm
+                            ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
+                        />
+                        {errors.name && (
+                            <p className="mt-1 text-xs text-red-600">{errors.name}</p>
+                        )}
+                    </div>
+
+                    {/* Phone Number Field */}
+                    <div>
+                        <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+                        <input
+                            type="tel"
+                            id="phoneNumber"
+                            name="phoneNumber"
+                            value={formData.phoneNumber}
+                            onChange={handleInputChange}
+                            placeholder="e.g., 9876543210"
+                            maxLength={15}
+                            className={`block w-full px-4 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm
+                            ${errors.phoneNumber ? 'border-red-500' : 'border-gray-300'}`}
+                        />
+                        {errors.phoneNumber && (
+                            <p className="mt-1 text-xs text-red-600">{errors.phoneNumber}</p>
+                        )}
+                    </div>
+
+                    {/* Transaction ID Field */}
+                    <div>
+                        <label htmlFor="transactionId" className="block text-sm font-medium text-gray-700 mb-1">Transaction ID *</label>
+                        <input
+                            type="text"
+                            id="transactionId"
+                            name="transactionId"
+                            value={formData.transactionId}
+                            onChange={handleInputChange}
+                            placeholder="UPI/Bank Transaction ID (UTR)"
+                            maxLength={50}
+                            className={`block w-full px-4 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm
+                            ${errors.transactionId ? 'border-red-500' : 'border-gray-300'}`}
+                        />
+                        {errors.transactionId && (
+                            <p className="mt-1 text-xs text-red-600">{errors.transactionId}</p>
+                        )}
+                    </div>
+
+                    {/* Group Selection */}
+                    <div>
+                        <label htmlFor="selectedGroup" className="block text-sm font-medium text-gray-700 mb-1">Select Test Group *</label>
+                        <select
+                            id="selectedGroup"
+                            name="selectedGroup"
+                            value={formData.selectedGroup}
+                            onChange={handleInputChange}
+                            className={`block w-full px-4 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm
+                            ${errors.selectedGroup ? 'border-red-500' : 'border-gray-300'}`}
+                        >
+                            <option value="">Choose a group</option>
+                            {groups.map((group) => (
+                                <option key={group.id} value={group.id}>
+                                    {group.name}
+                                </option>
+                            ))}
+                        </select>
+                        {errors.selectedGroup && (
+                            <p className="mt-1 text-xs text-red-600">{errors.selectedGroup}</p>
+                        )}
+                    </div>
+
+                    {/* File Upload */}
+                    <div>
+                        <label htmlFor="screenshot" className="block text-sm font-medium text-gray-700 mb-1">Payment Screenshot * (Max 5MB)</label>
+                        <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-gray-400 transition-colors bg-gray-50 flex items-center justify-center min-h-[120px]"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <input
+                                type="file"
+                                id="screenshot"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                accept="image/png, image/jpeg, image/gif"
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            {previewUrl ? (
+                                <div className="relative w-full h-full max-h-48">
+                                    <Image
+                                        src={previewUrl}
+                                        alt="Screenshot preview"
+                                        layout="fill"
+                                        objectFit="contain"
+                                        className="rounded-md"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); removeFile(); }}
+                                        className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold shadow-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="text-gray-500">
+                                    <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m-4-4a4 4 0 00-5.656 0L28 28m0 0l4 4m-4-4L20 20m-4 4l-4-4m-4 4l-4-4m-4 4l-4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    <p className="mt-1 text-sm">Drag 'n' drop or click to upload</p>
+                                    <p className="text-xs">PNG, JPG, GIF up to 5MB</p>
+                                </div>
+                            )}
+                        </div>
+                        {errors.screenshot && (
+                            <p className="mt-1 text-xs text-red-600">{errors.screenshot}</p>
+                        )}
+                    </div>
+
+                    {/* Submit Button */}
+                    <div>
+                        <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+                            ${isSubmitting
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-blue-600 hover:bg-blue-700'
+                            }`}
+                        >
+                            {isSubmitting ? (
+                                <span className="flex items-center">
+                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Submitting...
+                                </span>
+                            ) : (
+                                'Submit Payment Details'
+                            )}
+                        </button>
+                    </div>
+                </form>
             </div>
-            {errors.screenshot && (
-              <span style={styles.errorText}>{errors.screenshot}</span>
-            )}
-          </div>
-          
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            style={{
-              ...styles.submitButton,
-              ...(isSubmitting ? styles.submitButtonDisabled : {})
-            }}
-          >
-            {isSubmitting ? 'Submitting...' : 'Submit Payment Details'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-const styles = {
-  container: {
-    minHeight: '100vh',
-    backgroundColor: '#f8f9fa',
-    padding: '20px',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-  },
-  
-  formCard: {
-    maxWidth: '600px',
-    margin: '0 auto',
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    padding: '32px',
-  },
-  
-  title: {
-    fontSize: '28px',
-    fontWeight: '700',
-    color: '#212529',
-    marginBottom: '8px',
-    textAlign: 'center'
-  },
-  
-  subtitle: {
-    fontSize: '16px',
-    color: '#6c757d',
-    textAlign: 'center',
-    marginBottom: '32px'
-  },
-  
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '24px'
-  },
-  
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px'
-  },
-  
-  label: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: '4px'
-  },
-  
-  input: {
-    padding: '12px 16px',
-    borderWidth: '2px',
-    borderStyle: 'solid',
-    borderColor: '#e5e7eb',
-    borderRadius: '8px',
-    fontSize: '16px',
-    transition: 'border-color 0.2s ease',
-    outline: 'none',
-    backgroundColor: '#ffffff'
-  },
-  
-  select: {
-    padding: '12px 16px',
-    borderWidth: '2px',
-    borderStyle: 'solid',
-    borderColor: '#e5e7eb',
-    borderRadius: '8px',
-    fontSize: '16px',
-    transition: 'border-color 0.2s ease',
-    outline: 'none',
-    backgroundColor: '#ffffff',
-    cursor: 'pointer'
-  },
-  
-  inputError: {
-    borderColor: '#dc3545'
-  },
-  
-  errorText: {
-    fontSize: '12px',
-    color: '#dc3545',
-    marginTop: '4px'
-  },
-  
-  fileUploadContainer: {
-    position: 'relative'
-  },
-  
-  fileInput: {
-    display: 'none'
-  },
-  
-  fileDropZone: {
-    borderWidth: '2px',
-    borderStyle: 'dashed',
-    borderColor: '#d1d5db',
-    borderRadius: '8px',
-    padding: '24px',
-    textAlign: 'center',
-    cursor: 'pointer',
-    transition: 'border-color 0.2s ease',
-    backgroundColor: '#fafafa',
-    minHeight: '150px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  
-  uploadPlaceholder: {
-    textAlign: 'center'
-  },
-  
-  uploadIcon: {
-    fontSize: '48px',
-    marginBottom: '12px'
-  },
-  
-  uploadHint: {
-    fontSize: '12px',
-    color: '#6c757d',
-    margin: '4px 0 0 0'
-  },
-  
-  previewContainer: {
-    position: 'relative',
-    display: 'inline-block'
-  },
-  
-  previewImage: {
-    maxWidth: '200px',
-    maxHeight: '200px',
-    objectFit: 'cover',
-    borderRadius: '8px',
-    border: '1px solid #e5e7eb'
-  },
-  
-  removeButton: {
-    position: 'absolute',
-    top: '-8px',
-    right: '-8px',
-    background: '#dc3545',
-    color: 'white',
-    border: 'none',
-    borderRadius: '50%',
-    width: '24px',
-    height: '24px',
-    cursor: 'pointer',
-    fontSize: '16px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  
-  submitButton: {
-    padding: '16px 24px',
-    backgroundColor: '#007bff',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '16px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'background-color 0.2s ease',
-    marginTop: '16px'
-  },
-  
-  submitButtonDisabled: {
-    backgroundColor: '#6c757d',
-    cursor: 'not-allowed'
-  },
-  
-  successMessage: {
-    padding: '12px 16px',
-    backgroundColor: '#d4edda',
-    color: '#155724',
-    border: '1px solid #c3e6cb',
-    borderRadius: '8px',
-    marginBottom: '24px',
-    textAlign: 'center'
-  },
-  
-  errorMessage: {
-    padding: '12px 16px',
-    backgroundColor: '#f8d7da',
-    color: '#721c24',
-    border: '1px solid #f5c6cb',
-    borderRadius: '8px',
-    marginBottom: '24px',
-    textAlign: 'center'
-  }
-};
-
-// Add responsive styles
-if (typeof window !== 'undefined') {
-  const mediaQuery = window.matchMedia('(max-width: 768px)');
-  
-  const handleMobileStyles = (e) => {
-    if (e.matches) {
-      // Mobile styles
-      Object.assign(styles.container, {
-        padding: '16px'
-      });
-      
-      Object.assign(styles.formCard, {
-        padding: '24px'
-      });
-      
-      Object.assign(styles.title, {
-        fontSize: '24px'
-      });
-    }
-  };
-  
-  mediaQuery.addListener(handleMobileStyles);
-  handleMobileStyles(mediaQuery);
+        </div>
+    );
 }

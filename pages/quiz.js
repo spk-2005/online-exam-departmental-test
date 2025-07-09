@@ -1,21 +1,12 @@
-import React, { useEffect, useState, useRef } from "react"; // Import useRef
+import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/router";
 import { Clock, User, CheckCircle, AlertCircle, Circle, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function Quiz() {
-  let html2pdf;
-if (typeof window !== 'undefined') {
-  import('html2pdf.js').then(module => {
-    html2pdf = module.default;
-  }).catch(error => {
-    console.error("Failed to load html2pdf.js:", error);
-  });
-}
   const router = useRouter();
   const [group, setGroup] = useState("");
   const [test, setTest] = useState("");
 
-  // Use useRef to store the interval ID
   const timerIntervalRef = useRef(null);
 
   const formatTime = (seconds) => {
@@ -51,7 +42,7 @@ if (typeof window !== 'undefined') {
   const [selectedOption, setSelectedOption] = useState({});
   const [markedQuestions, setMarkedQuestions] = useState({});
   const [status, setStatus] = useState({});
-  const [timer, setTimer] = useState(7200);
+  const [timer, setTimer] = useState(7200); // 2 hours in seconds
   const [showSummary, setShowSummary] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [score, setScore] = useState(0);
@@ -60,7 +51,6 @@ if (typeof window !== 'undefined') {
   const [name, setName] = useState('Test User');
   const [isClient, setIsClient] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(true);
-  const [showInstructions, setShowInstructions] = useState(false);
   const [questionPaperOpen, setQuestionPaperOpen] = useState(false);
   const [instructionOpen, setInstructionOpen] = useState(false);
 
@@ -73,18 +63,11 @@ if (typeof window !== 'undefined') {
       const storedUsername = localStorage.getItem('username');
       const queryName = router.query.name;
 
-      console.log("=== USERNAME RESOLUTION ===");
-      console.log("localStorage username:", storedUsername);
-      console.log("router.query.name:", queryName);
-
       if (storedUsername) {
-        console.log("Using username from localStorage:", storedUsername);
         setName(storedUsername);
       } else if (queryName) {
-        console.log("Using username from query:", queryName);
         setName(queryName);
       } else {
-        console.log("No username found, using fallback: Test User");
         setName('Test User');
       }
     }
@@ -118,6 +101,13 @@ if (typeof window !== 'undefined') {
       }
 
       setQuestions(data);
+      // Initialize status for all questions as 'not-visited'
+      const initialStatus = {};
+      data.forEach((_, i) => {
+        initialStatus[i] = 'not-visited';
+      });
+      setStatus(initialStatus);
+
       setError(null);
     } catch (err) {
       console.error('Error fetching questions:', err);
@@ -130,43 +120,56 @@ if (typeof window !== 'undefined') {
   useEffect(() => {
     if (questions.length === 0) return;
 
-    // Store the interval ID in the ref
-    timerIntervalRef.current = setInterval(() => {
-      setTimer(prev => {
-        if (prev <= 0) {
-          clearInterval(timerIntervalRef.current); // Clear using the ref
-          handleSubmit();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    // Only start timer if it's not already running and not on summary page
+    if (!timerIntervalRef.current && !showSummary) {
+      timerIntervalRef.current = setInterval(() => {
+        setTimer(prev => {
+          if (prev <= 0) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+            handleSubmit(); // Auto-submit when timer reaches 0
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
 
-    // Cleanup function to clear interval if component unmounts or questions change
-    return () => clearInterval(timerIntervalRef.current);
-  }, [questions.length]);
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    };
+  }, [questions.length, showSummary]); // Add showSummary to dependency array to prevent timer restart after submission
 
 
-  // Prevent page refresh/close
   useEffect(() => {
     const handleBeforeUnload = (e) => {
-      e.preventDefault();
-      e.returnValue = "";
-      return "";
+      // Only prompt if quiz is active and not showing summary
+      if (questions.length > 0 && !showSummary) {
+        e.preventDefault();
+        e.returnValue = "";
+        return "";
+      }
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, []);
+  }, [questions.length, showSummary]);
 
   const handleOptionChange = (val) => {
     setSelectedOption(prev => ({ ...prev, [index]: val }));
-
-    setStatus(prev => ({ ...prev, [index]: "answered" }));
+    // If the question was marked for review without an answer, and now answered, update status
+    setStatus(prev => ({ ...prev, [index]: markedQuestions[index] ? "answered-marked" : "answered" }));
   };
 
   const nextQuestion = () => {
-    setStatus(prev => ({ ...prev, [index]: selectedOption[index] ? "answered" : "not-answered" }));
+    // Only update status if it's not already 'answered-marked'
+    if (status[index] !== "answered-marked" && selectedOption[index] && status[index] !== "answered") {
+      setStatus(prev => ({ ...prev, [index]: "answered" }));
+    } else if (!selectedOption[index] && status[index] === "not-visited") {
+      setStatus(prev => ({ ...prev, [index]: "not-answered" }));
+    }
     if (index < questions.length - 1) setIndex(index + 1);
   };
 
@@ -176,6 +179,7 @@ if (typeof window !== 'undefined') {
 
   const markReview = () => {
     setMarkedQuestions(prev => ({ ...prev, [index]: true }));
+    // If an option is selected, it's answered-marked, otherwise just review
     setStatus(prev => ({ ...prev, [index]: selectedOption[index] ? "answered-marked" : "review" }));
     if (index < questions.length - 1) setIndex(index + 1);
   };
@@ -186,29 +190,41 @@ if (typeof window !== 'undefined') {
       delete updated[index];
       return updated;
     });
+    // Set status based on whether it was marked for review or not
     setStatus(prev => ({ ...prev, [index]: markedQuestions[index] ? "review" : "not-answered" }));
   };
 
-
   const goToQuestion = (questionIndex) => {
-    setStatus(prev => ({ ...prev, [index]: selectedOption[index] ? "answered" : "not-answered" }));
+    // Before navigating, update the status of the current question if not already handled
+    if (status[index] === 'not-visited') {
+      setStatus(prev => ({ ...prev, [index]: "not-answered" }));
+    } else if (selectedOption[index] && status[index] !== "answered-marked" && status[index] !== "answered") {
+      // If an option is selected and it's not already set to answered/answered-marked, set it
+      setStatus(prev => ({ ...prev, [index]: markedQuestions[index] ? "answered-marked" : "answered" }));
+    } else if (!selectedOption[index] && status[index] !== "review" && status[index] !== "not-answered") {
+      // If no option is selected and it's not already set to review/not-answered, set it
+      setStatus(prev => ({ ...prev, [index]: markedQuestions[index] ? "review" : "not-answered" }));
+    }
     setIndex(questionIndex);
   };
 
   const handleSubmit = async () => {
-    // --- MODIFIED CODE STARTS HERE ---
     // Stop the timer immediately when submit is clicked
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
-      timerIntervalRef.current = null; // Clear the ref
+      timerIntervalRef.current = null;
     }
-    // --- MODIFIED CODE ENDS HERE ---
 
     try {
       let scoreCalc = 0;
+      let attemptedCount = 0;
+
       questions.forEach((q, i) => {
-        if (selectedOption[i] === q.options[q.correct.charCodeAt(0) - 65]) {
-          scoreCalc++;
+        if (selectedOption[i] !== undefined) { // Check if an option was truly selected for this question
+          attemptedCount++;
+          if (selectedOption[i] === q.options[q.correct.charCodeAt(0) - 65]) {
+            scoreCalc++;
+          }
         }
       });
 
@@ -218,15 +234,8 @@ if (typeof window !== 'undefined') {
 
       const actualUsername = localStorage.getItem('username') || name;
 
-      console.log("=== SUBMIT DEBUG ===");
-      console.log("name state:", name);
-      console.log("localStorage userName:", localStorage.getItem('username'));
-      console.log("Final username to send:", actualUsername);
-
-      const attemptedCount = Object.values(selectedOption).filter(val => val !== undefined).length;
-
       const totalTimeInSeconds = 7200;
-      const timeElapsedSeconds = totalTimeInSeconds - timer; // Use the timer's value *at the moment of submit click*
+      const timeElapsedSeconds = totalTimeInSeconds - timer; // This correctly calculates time spent
 
       const hoursTaken = Math.floor(timeElapsedSeconds / 3600);
       const minutesTaken = Math.floor((timeElapsedSeconds % 3600) / 60);
@@ -247,8 +256,6 @@ if (typeof window !== 'undefined') {
         submittedAt: new Date().toISOString()
       };
 
-      console.log("Submitting with username:", resultData.name);
-
       const submitRes = await fetch("/api/results/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -264,7 +271,6 @@ if (typeof window !== 'undefined') {
 
         if (responseData.attemptsDecreased) {
           console.log('✅ Attempts successfully decreased');
-          console.log('Remaining attempts:', responseData.remainingAttempts);
         } else {
           console.log('❌ Attempts were NOT decreased');
           console.log('Reason:', responseData.error || 'Unknown');
@@ -276,30 +282,32 @@ if (typeof window !== 'undefined') {
   };
 
   const getQuestionStats = () => {
-    const answered = Object.values(status).filter(s => s === 'answered' || s === 'answered-marked').length;
-    const review = Object.values(status).filter(s => s === 'review').length;
-    const notAnswered = Object.values(status).filter(s => s === 'not-answered').length;
-    const answeredMarked = Object.values(status).filter(s => s === 'answered-marked').length;
-    const notVisited = questions.length - answered - review - notAnswered;
+    // Corrected logic for status counts
+    const answered = Object.keys(status).filter(i => status[i] === 'answered').length;
+    const review = Object.keys(status).filter(i => status[i] === 'review').length;
+    const notAnswered = Object.keys(status).filter(i => status[i] === 'not-answered').length;
+    const answeredMarked = Object.keys(status).filter(i => status[i] === 'answered-marked').length;
+    const notVisited = questions.length - (answered + review + notAnswered + answeredMarked);
 
-    return { answered: answered - answeredMarked, review, notAnswered, notVisited, answeredMarked };
+    return { answered, review, notAnswered, notVisited, answeredMarked };
   };
 
   const getQuestionStatusClass = (questionIndex) => {
     const questionStatus = status[questionIndex];
-    const hasAnswer = selectedOption[questionIndex] !== undefined;
-    const isMarked = markedQuestions[questionIndex];
 
-    if (questionStatus === "answered" && !isMarked) {
-      return "bg-green-500 text-white";
-    } else if (questionStatus === "answered-marked" || (hasAnswer && isMarked)) {
-      return "bg-purple-500 text-white border-2 border-purple-700";
-    } else if (questionStatus === "review" || isMarked) {
-      return "bg-yellow-500 text-white";
-    } else if (questionStatus === "not-answered") {
-      return "bg-red-500 text-white";
+    switch (questionStatus) {
+      case "answered":
+        return "bg-green-500 text-white";
+      case "answered-marked":
+        return "bg-purple-500 text-white border-2 border-purple-700";
+      case "review":
+        return "bg-yellow-500 text-white";
+      case "not-answered":
+        return "bg-red-500 text-white";
+      case "not-visited":
+      default:
+        return "bg-gray-300 text-gray-700";
     }
-    return "bg-gray-300 text-gray-700";
   };
 
   const openQuestionPaper = () => {
@@ -344,101 +352,109 @@ if (typeof window !== 'undefined') {
     );
   }
 
-  // --- Start of corrected conditional rendering ---
   if (showSummary) {
-    // Calculate time elapsed in seconds
-    const totalQuizDuration = 7200; // Your initial total quiz time in seconds
+    const totalQuizDuration = 7200;
     const timeElapsedSeconds = totalQuizDuration - timer;
 
-    // Use a similar formatting logic for display here
     const formatElapsedTimeForDisplay = (seconds) => {
-      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
       const remainingSeconds = seconds % 60;
 
-      if (minutes > 0) {
-        return `${minutes} minutes`;
-      } else {
-        return `${remainingSeconds} seconds`;
+      let result = [];
+      if (hours > 0) result.push(`${hours} hour${hours > 1 ? 's' : ''}`);
+      if (minutes > 0) result.push(`${minutes} minute${minutes > 1 ? 's' : ''}`);
+      if (remainingSeconds > 0 || result.length === 0) result.push(`${remainingSeconds} second${remainingSeconds !== 1 ? 's' : ''}`);
+
+      return result.join(' ');
+    };
+
+    const handleDownloadPdf = () => {
+      // Data to send to the server for PDF generation
+      const params = new URLSearchParams({
+        name: encodeURIComponent(name),
+        group: encodeURIComponent(group),
+        test: encodeURIComponent(test),
+        score: score,
+        total: questions.length,
+        timeTaken: formatElapsedTimeForDisplay(timeElapsedSeconds),
+        percentage: ((score / questions.length) * 100).toFixed(1),
+        result: ((score / questions.length) * 100) >= 40 ? 'PASS' : 'FAIL',
+        attempted: getQuestionStats().answered + getQuestionStats().answeredMarked, // Correctly pass attempted count
+        notAttempted: getQuestionStats().notAnswered + getQuestionStats().notVisited + getQuestionStats().review // Correctly pass not attempted count
+      }).toString();
+
+      // Directly open the API route in a new tab to trigger download
+      try {
+        window.open(`/api/generate-pdf?${params}`, '_blank');
+      } catch (error) {
+        console.error("Error initiating PDF download:", error);
+        alert("Failed to download PDF. Please try again.");
       }
     };
 
+
     return (
-      <div className="min-h-screen bg-gray-100 py-12">
-        <div className="max-w-4xl mx-auto px-4">
-          <div id="result-summary" className="bg-white rounded-lg shadow-lg p-8"> {/* Added ID here for html2pdf */}
-            <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">
+      <div className="min-h-screen bg-gray-100 py-6 sm:py-12 flex items-center justify-center">
+        <div className="max-w-xs sm:max-w-md md:max-w-xl lg:max-w-4xl w-full mx-auto px-2 sm:px-4">
+          <div id="result-summary" className="bg-white rounded-lg shadow-lg p-4 sm:p-8">
+            <h2 className="text-xl sm:text-3xl font-bold text-center mb-4 sm:mb-8 text-gray-800">
               📊 Quiz Results
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="text-center p-6 bg-blue-50 rounded-lg">
-                <div className="text-3xl font-bold text-blue-600 mb-2">{score}</div>
-                <div className="text-sm text-gray-600">Correct Answers</div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
+              <div className="text-center p-3 sm:p-6 bg-blue-50 rounded-lg">
+                <div className="text-2xl sm:text-3xl font-bold text-blue-600 mb-1 sm:mb-2">{score}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Correct Answers</div>
               </div>
 
-              <div className="text-center p-6 bg-green-50 rounded-lg">
-                <div className="text-3xl font-bold text-green-600 mb-2">
+              <div className="text-center p-3 sm:p-6 bg-green-50 rounded-lg">
+                <div className="text-2xl sm:text-3xl font-bold text-green-600 mb-1 sm:mb-2">
                   {((score / questions.length) * 100).toFixed(1)}%
                 </div>
-                <div className="text-sm text-gray-600">Percentage</div>
+                <div className="text-xs sm:text-sm text-gray-600">Percentage</div>
               </div>
 
-              <div className="text-center p-6 bg-purple-50 rounded-lg">
-                <div className="text-3xl font-bold text-purple-600 mb-2">
-                  {Object.keys(selectedOption).length}
+              <div className="text-center p-3 sm:p-6 bg-purple-50 rounded-lg">
+                <div className="text-2xl sm:text-3xl font-bold text-purple-600 mb-1 sm:mb-2">
+                  {getQuestionStats().answered + getQuestionStats().answeredMarked}
                 </div>
-                <div className="text-sm text-gray-600">Attempted</div>
+                <div className="text-xs sm:text-sm text-gray-600">Attempted</div>
               </div>
 
-              <div className="text-center p-6 bg-orange-50 rounded-lg">
-                <div className="text-3xl font-bold text-orange-600 mb-2">
-                  {questions.length - Object.keys(selectedOption).length}
+              <div className="text-center p-3 sm:p-6 bg-orange-50 rounded-lg">
+                <div className="text-2xl sm:text-3xl font-bold text-orange-600 mb-1 sm:mb-2">
+                  {questions.length - (getQuestionStats().answered + getQuestionStats().answeredMarked)}
                 </div>
-                <div className="text-sm text-gray-600">Not Attempted</div>
+                <div className="text-xs sm:text-sm text-gray-600">Not Attempted</div>
               </div>
             </div>
 
-            <div className="text-center mb-8">
-              <div className={`text-4xl font-bold mb-4 ${
+            <div className="text-center mb-6 sm:mb-8">
+              <div className={`text-3xl sm:text-4xl font-bold mb-2 sm:mb-4 ${
                 ((score / questions.length) * 100) >= 40 ? 'text-green-600' : 'text-red-600'
                 }`}>
                 {((score / questions.length) * 100) >= 40 ? '✅ PASS' : '❌ FAIL'}
               </div>
-              <div className="text-lg text-gray-600">
+              <div className="text-base sm:text-lg text-gray-600">
                 Time Taken: {formatElapsedTimeForDisplay(timeElapsedSeconds)}
               </div>
-              <div className="text-sm text-gray-500 mt-2">
+              <div className="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-2">
                 Candidate: {name} | Test: {decodeURIComponent(group)} - {decodeURIComponent(test)}
               </div>
             </div>
 
-            <div className="text-center mt-6 space-x-4">
+            <div className="flex flex-col sm:flex-row justify-center mt-4 sm:mt-6 space-y-3 sm:space-y-0 sm:space-x-4">
               <button
-                onClick={() => {
-                  // Ensure html2pdf is loaded. You might need to import it or load it via a script tag.
-                  // For example, if you installed it via npm:
-                  // import html2pdf from 'html2pdf.js'; // at the top of the file
-                  const element = document.getElementById("result-summary");
-                   if (html2pdf) { // Check if html2pdf is actually loaded before using it
-    html2pdf().from(element).set({
-                      margin: 10,
-                      filename: `${name}_${decodeURIComponent(group)}_${decodeURIComponent(test)}_Result.pdf`,
-                      html2canvas: { scale: 2 },
-                      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-                    }).save();
-                  } else {
-                    alert("PDF generation library not loaded. Please ensure html2pdf.js is correctly integrated.");
-                    console.error("html2pdf is not defined. Make sure the library is loaded.");
-                  }
-                }}
-                className="bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600 transition-colors"
+                onClick={handleDownloadPdf}
+                className="bg-green-500 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-md hover:bg-green-600 transition-colors text-sm sm:text-base"
               >
                 📥 Download Results PDF
               </button>
 
               <button
                 onClick={() => router.push("/")}
-                className="bg-blue-500 text-white px-6 py-3 rounded hover:bg-blue-600 transition-colors"
+                className="bg-blue-500 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-md hover:bg-blue-600 transition-colors text-sm sm:text-base"
               >
                 Back to Home
               </button>
@@ -448,15 +464,12 @@ if (typeof window !== 'undefined') {
       </div>
     );
   }
-  // --- End of corrected conditional rendering ---
 
   if (!group || !test) {
-    // This block will now only be hit if group/test are truly missing AND showSummary is false.
-    // It's still good to redirect if the necessary quiz info isn't there.
     return (
       <div className="flex justify-center items-center h-screen bg-gray-100">
-        <div className="text-center text-red-600">
-          <p>Quiz information missing. Redirecting...</p>
+        <div className="text-center text-red-600 p-4">
+          <p className="text-lg">Quiz information missing. Redirecting to home...</p>
         </div>
       </div>
     );
@@ -465,9 +478,9 @@ if (typeof window !== 'undefined') {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen bg-gray-100">
-        <div className="text-center">
+        <div className="text-center p-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading questions...</p>
+          <p className="text-gray-600 text-lg">Loading questions...</p>
         </div>
       </div>
     );
@@ -476,19 +489,19 @@ if (typeof window !== 'undefined') {
   if (error) {
     return (
       <div className="flex justify-center items-center h-screen bg-gray-100">
-        <div className="text-center">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <p className="text-red-600 mb-4">{error}</p>
-          <div className="space-x-2">
+        <div className="text-center p-4">
+          <div className="text-red-500 text-5xl sm:text-6xl mb-4">⚠️</div>
+          <p className="text-red-600 mb-4 text-base sm:text-lg">{error}</p>
+          <div className="flex flex-col sm:flex-row justify-center space-y-2 sm:space-y-0 sm:space-x-4">
             <button
               onClick={fetchQuestions}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm sm:text-base"
             >
               Retry
             </button>
             <button
               onClick={() => router.push('/')}
-              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 text-sm sm:text-base"
             >
               Back to Home
             </button>
@@ -502,70 +515,67 @@ if (typeof window !== 'undefined') {
     const stats = getQuestionStats();
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-        <div className="bg-white rounded-lg p-8 max-w-4xl w-full mx-4">
-          <h2 className="text-2xl font-bold mb-6 text-center">Submit Confirmation</h2>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+        <div className="bg-white rounded-lg p-6 sm:p-8 max-w-sm sm:max-w-xl md:max-w-2xl w-full mx-auto">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">Submit Confirmation</h2>
 
-          <div className="overflow-x-auto mb-6">
-            <table className="w-full border-collapse border border-gray-300">
+          <div className="overflow-x-auto mb-4 sm:mb-6 text-xs sm:text-sm">
+            <table className="min-w-full border-collapse border border-gray-300">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="border border-gray-300 p-3 text-left">Section Name</th>
-                  <th className="border border-gray-300 p-3 text-center">Total Questions</th>
-                  <th className="border border-gray-300 p-3 text-center">Answered</th>
-                  <th className="border border-gray-300 p-3 text-center">Not Answered</th>
-                  <th className="border border-gray-300 p-3 text-center">Marked for Review</th>
-                  <th className="border border-gray-300 p-3 text-center">Answered & Marked</th>
-                  <th className="border border-gray-300 p-3 text-center">Not Visited</th>
+                  <th className="border border-gray-300 p-2 sm:p-3 text-left">Section</th>
+                  <th className="border border-gray-300 p-2 sm:p-3 text-center">Total</th>
+                  <th className="border border-gray-300 p-2 sm:p-3 text-center">Ans.</th>
+                  <th className="border border-gray-300 p-2 sm:p-3 text-center">Not Ans.</th>
+                  <th className="border border-gray-300 p-2 sm:p-3 text-center">Rev.</th>
+                  <th className="border border-gray-300 p-2 sm:p-3 text-center">Ans. & Rev.</th>
+                  <th className="border border-gray-300 p-2 sm:p-3 text-center">Not Visited</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td className="border border-gray-300 p-3 font-semibold">
+                  <td className="border border-gray-300 p-2 sm:p-3 font-semibold">
                     {decodeURIComponent(group)} {decodeURIComponent(test)}
                   </td>
-                  <td className="border border-gray-300 p-3 text-center">{questions.length}</td>
-                  <td className="border border-gray-300 p-3 text-center">{stats.answered}</td>
-                  <td className="border border-gray-300 p-3 text-center">{stats.notAnswered}</td>
-                  <td className="border border-gray-300 p-3 text-center">{stats.review}</td>
-                  <td className="border border-gray-300 p-3 text-center">{stats.answeredMarked}</td>
-                  <td className="border border-gray-300 p-3 text-center">{stats.notVisited}</td>
+                  <td className="border border-gray-300 p-2 sm:p-3 text-center">{questions.length}</td>
+                  <td className="border border-gray-300 p-2 sm:p-3 text-center">{stats.answered}</td>
+                  <td className="border border-gray-300 p-2 sm:p-3 text-center">{stats.notAnswered}</td>
+                  <td className="border border-gray-300 p-2 sm:p-3 text-center">{stats.review}</td>
+                  <td className="border border-gray-300 p-2 sm:p-3 text-center">{stats.answeredMarked}</td>
+                  <td className="border border-gray-300 p-2 sm:p-3 text-center">{stats.notVisited}</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
           <div className="text-center">
-            <p className="text-lg mb-6">Are you sure you want to submit?</p>
-            <div className="space-x-4">
+            <p className="text-base sm:text-lg mb-4 sm:mb-6">Are you sure you want to submit?</p>
+            <div className="flex justify-center space-x-3 sm:space-x-4">
               <button
                 onClick={() => {
-                  // Optionally, restart timer here if user cancels submission
-                  // For simplicity, we are keeping it stopped after the first click.
-                  // If you want to restart, you'd need to re-initialize the interval.
                   setShowSubmitConfirm(false);
-
-                  // Re-start the timer if the user cancels submission
-                  // if (!timerIntervalRef.current) {
-                  //   timerIntervalRef.current = setInterval(() => {
-                  //     setTimer(prev => {
-                  //       if (prev <= 0) {
-                  //         clearInterval(timerIntervalRef.current);
-                  //         handleSubmit();
-                  //         return 0;
-                  //       }
-                  //       return prev - 1;
-                  //     });
-                  //   }, 1000);
-                  // }
+                  // Optionally re-start timer if user cancels submission
+                  if (!timerIntervalRef.current && timer > 0 && !showSummary) {
+                    timerIntervalRef.current = setInterval(() => {
+                      setTimer(prev => {
+                        if (prev <= 0) {
+                          clearInterval(timerIntervalRef.current);
+                          timerIntervalRef.current = null;
+                          handleSubmit();
+                          return 0;
+                        }
+                        return prev - 1;
+                      });
+                    }, 1000);
+                  }
                 }}
-                className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
+                className="bg-gray-500 text-white px-4 sm:px-6 py-2 rounded-md hover:bg-gray-600 text-sm sm:text-base"
               >
                 No
               </button>
               <button
-                onClick={handleSubmit} // This will re-trigger handleSubmit, but the timer is already stopped
-                className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600"
+                onClick={handleSubmit}
+                className="bg-red-500 text-white px-4 sm:px-6 py-2 rounded-md hover:bg-red-600 text-sm sm:text-base"
               >
                 Yes, Submit
               </button>
@@ -580,83 +590,70 @@ if (typeof window !== 'undefined') {
   const displayText = `${decodeURIComponent(group)} ${decodeURIComponent(test)}`;
 
   return (
-    <div className="min-h-screen bg-gray-100 select-none">
+    <div className="min-h-screen bg-gray-100 flex flex-col select-none">
       {/* Header */}
-      <div className="bg-gray-800 text-white p-3 flex justify-between items-center">
-        <div className="flex items-center space-x-4">
-          <span className="text-yellow-400 font-bold text-lg">
+      <div className="bg-gray-800 text-white p-3 flex justify-between items-center flex-wrap gap-2">
+        <div className="flex items-center">
+          <span className="text-yellow-400 font-bold text-base sm:text-lg">
             {displayText}
           </span>
         </div>
-        <div className="flex items-center space-x-6">
+        <div className="flex items-center space-x-3 sm:space-x-6 flex-wrap justify-end">
           <button
             onClick={openQuestionPaper}
-            className="flex items-center space-x-2 hover:text-yellow-400 transition-colors"
+            className="flex items-center space-x-1 sm:space-x-2 hover:text-yellow-400 transition-colors text-xs sm:text-sm px-2 py-1 rounded"
           >
-            <span className="text-sm">📄 Question Paper</span>
+            📄 <span className="hidden sm:inline">Question Paper</span><span className="sm:hidden">Paper</span>
           </button>
           <button
             onClick={openInstructions}
-            className="flex items-center space-x-2 hover:text-yellow-400 transition-colors"
+            className="flex items-center space-x-1 sm:space-x-2 hover:text-yellow-400 transition-colors text-xs sm:text-sm px-2 py-1 rounded"
           >
-            <span className="text-sm">👁 View Instructions</span>
+            👁 <span className="hidden sm:inline">View Instructions</span><span className="sm:hidden">Instructions</span>
           </button>
         </div>
       </div>
 
-      <div className="flex">
+      <div className="flex flex-1 overflow-hidden">
         {/* Main Content */}
-        <div className={`flex-1 bg-white transition-all duration-300 ${showRightPanel ? 'mr-80' : 'mr-0'}`}>
+        <div className={`flex-1 bg-white transition-all duration-300 overflow-y-auto ${showRightPanel ? 'sm:mr-80' : 'mr-0'}`}>
           {/* Test Header */}
-          <div className="bg-blue-500 text-white p-3 flex justify-between items-center">
+          <div className="bg-blue-500 text-white p-3 flex justify-between items-center flex-wrap gap-2">
             <div className="flex items-center space-x-2">
-              <span className="bg-blue-600 px-3 py-1 rounded text-sm font-semibold">
+              <span className="bg-blue-600 px-2 py-1 rounded text-xs sm:text-sm font-semibold">
                 {displayText}
               </span>
-              <span className="bg-blue-600 px-2 py-1 rounded text-xs">1</span>
             </div>
-            <div className="text-right">
-              <span className="text-sm">Time Remaining: </span>
+            <div className="text-right text-sm">
+              <span>Time Remaining: </span>
               <span className="font-bold text-red-200">{formatTime(timer)}</span>
             </div>
           </div>
 
-          {/* Sections */}
-          <div className="border-b border-gray-300 p-2">
-            <span className="text-sm font-semibold">Sections</span>
-          </div>
-
-          <div className="bg-blue-500 text-white p-2 flex items-center space-x-2">
-            <span className="bg-blue-600 px-3 py-1 rounded text-sm font-semibold">
-              {displayText}
-            </span>
-            <span className="bg-blue-600 px-2 py-1 rounded text-xs">1</span>
-          </div>
-
           {/* Question Type */}
-          <div className="border-b border-gray-300 p-3">
-            <span className="text-sm font-semibold">Question Type: MCQ</span>
+          <div className="border-b border-gray-300 p-3 text-sm">
+            <span className="font-semibold">Question Type: MCQ</span>
           </div>
 
           {/* Question Number */}
           <div className="border-b border-gray-300 p-3">
-            <span className="text-lg font-semibold">Question No. {index + 1}</span>
+            <span className="text-base sm:text-lg font-semibold">Question No. {index + 1}</span>
           </div>
 
           {/* Question Content */}
-          <div className="p-6 min-h-96">
+          <div className="p-4 sm:p-6 min-h-[300px] sm:min-h-96">
             {questions.length > 0 && (
               <>
-                <div className="mb-8">
-                  <h3 className="text-lg font-medium text-gray-800 mb-6 leading-relaxed">
+                <div className="mb-6 sm:mb-8">
+                  <h3 className="text-base sm:text-lg font-medium text-gray-800 mb-4 sm:mb-6 leading-relaxed">
                     {questions[index].question}
                   </h3>
 
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     {questions[index].options.map((opt, i) => (
                       <label
                         key={i}
-                        className="flex items-start space-x-3 cursor-pointer p-3 hover:bg-gray-50 rounded border border-transparent hover:border-gray-200 transition-all"
+                        className="flex items-start space-x-3 cursor-pointer p-2 sm:p-3 hover:bg-gray-50 rounded border border-transparent hover:border-gray-200 transition-all"
                       >
                         <input
                           type="radio"
@@ -665,7 +662,7 @@ if (typeof window !== 'undefined') {
                           onChange={() => handleOptionChange(opt)}
                           className="w-4 h-4 text-blue-600 mt-1 flex-shrink-0"
                         />
-                        <span className="text-gray-800 leading-relaxed">{opt}</span>
+                        <span className="text-sm sm:text-base text-gray-800 leading-relaxed">{opt}</span>
                       </label>
                     ))}
                   </div>
@@ -675,38 +672,37 @@ if (typeof window !== 'undefined') {
           </div>
 
           {/* Action Buttons */}
-          <div className="border-t border-gray-300 p-4 flex justify-between bg-gray-50">
-            <div className="flex space-x-2">
+          <div className="border-t border-gray-300 p-3 sm:p-4 flex flex-col sm:flex-row justify-between bg-gray-50 gap-3">
+            <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
               <button
                 onClick={markReview}
-                className="px-4 py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                className="px-3 py-1.5 text-xs sm:px-4 sm:py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 transition-colors"
               >
                 Mark For Review & Next
               </button>
               <button
                 onClick={clearResponse}
-                className="px-4 py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                className="px-3 py-1.5 text-xs sm:px-4 sm:py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 transition-colors"
               >
                 Clear Response
               </button>
             </div>
-            <div className="flex space-x-2">
+            <div className="flex flex-wrap gap-2 justify-center sm:justify-end">
               <button
                 onClick={() => {
-                  // Stop timer when confirmation dialog is shown
                   if (timerIntervalRef.current) {
                     clearInterval(timerIntervalRef.current);
                     timerIntervalRef.current = null;
                   }
                   setShowSubmitConfirm(true);
                 }}
-                className="px-6 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                className="px-4 py-1.5 text-xs sm:px-6 sm:py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
               >
                 Submit
               </button>
               <button
                 onClick={nextQuestion}
-                className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                className="px-4 py-1.5 text-xs sm:px-6 sm:py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
               >
                 Save & Next
               </button>
@@ -715,84 +711,84 @@ if (typeof window !== 'undefined') {
         </div>
 
         {/* Right Panel */}
-        <div className={`fixed right-0 top-0 h-full w-80 bg-white border-l border-gray-300 transition-transform duration-300 ${showRightPanel ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className={`fixed right-0 top-0 h-full w-64 sm:w-80 bg-white border-l border-gray-300 transition-transform duration-300 z-40 ${showRightPanel ? 'translate-x-0' : 'translate-x-full'}`}>
           {/* Toggle Button */}
           <button
             onClick={() => setShowRightPanel(!showRightPanel)}
-            className="absolute -left-8 top-1/2 transform -translate-y-1/2 bg-blue-500 text-white p-2 rounded-l hover:bg-blue-600 transition-colors"
+            className="absolute -left-8 top-1/2 transform -translate-y-1/2 bg-blue-500 text-white p-1.5 sm:p-2 rounded-l hover:bg-blue-600 transition-colors z-50"
           >
             {showRightPanel ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
           </button>
 
           <div className="h-full overflow-y-auto">
             {/* User Info */}
-            <div className="p-4 border-b border-gray-300 flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
-                <User className="w-8 h-8 text-gray-600" />
+            <div className="p-3 sm:p-4 border-b border-gray-300 flex items-center space-x-3">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                <User className="w-6 h-6 sm:w-8 sm:h-8 text-gray-600" />
               </div>
               <div>
-                <div className="font-semibold text-gray-800">S</div>
-                <div className="text-sm text-gray-600">{name}</div>
+                <div className="font-semibold text-sm sm:text-base text-gray-800">Candidate</div>
+                <div className="text-xs sm:text-sm text-gray-600 truncate">{name}</div>
               </div>
             </div>
 
             {/* Status Legend */}
-            <div className="p-4 border-b border-gray-300">
-              <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="p-3 sm:p-4 border-b border-gray-300">
+              <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
                 <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 bg-gray-300 rounded text-center leading-6 font-semibold text-gray-700">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-gray-300 rounded text-center leading-5 sm:leading-6 font-semibold text-gray-700">
                     {stats.notVisited}
                   </div>
                   <span>Not Visited</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 bg-red-500 text-white rounded text-center leading-6 font-semibold">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-red-500 text-white rounded text-center leading-5 sm:leading-6 font-semibold">
                     {stats.notAnswered}
                   </div>
                   <span>Not Answered</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 bg-green-500 text-white rounded text-center leading-6 font-semibold">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-green-500 text-white rounded text-center leading-5 sm:leading-6 font-semibold">
                     {stats.answered}
                   </div>
                   <span>Answered</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 bg-yellow-500 text-white rounded text-center leading-6 font-semibold">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-yellow-500 text-white rounded text-center leading-5 sm:leading-6 font-semibold">
                     {stats.review}
                   </div>
                   <span>Marked For Review</span>
                 </div>
               </div>
-              <div className="mt-3 text-xs text-gray-500">
+              <div className="mt-2 text-xs sm:text-sm text-gray-500">
                 <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 bg-purple-500 text-white rounded text-center leading-6 font-semibold">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-purple-500 text-white rounded text-center leading-5 sm:leading-6 font-semibold">
                     {stats.answeredMarked}
                   </div>
-                  <span>Answered But Marked For Review</span>
+                  <span>Answered & Marked</span>
                 </div>
               </div>
             </div>
 
             {/* Question Navigator */}
-            <div className="p-4">
-              <div className="bg-blue-500 text-white p-2 text-center font-semibold rounded-t">
+            <div className="p-3 sm:p-4">
+              <div className="bg-blue-500 text-white p-2 text-center font-semibold rounded-t text-sm sm:text-base">
                 {displayText}
               </div>
-              <div className="bg-blue-300 text-white p-2 text-center font-semibold">
+              <div className="bg-blue-300 text-white p-2 text-center font-semibold text-sm sm:text-base">
                 Choose Question
               </div>
-              <div className="bg-gray-50 p-4 rounded-b max-h-64 overflow-y-auto">
-                <div className="grid grid-cols-7 gap-2">
+              <div className="bg-gray-50 p-3 sm:p-4 rounded-b max-h-64 overflow-y-auto">
+                <div className="grid grid-cols-5 sm:grid-cols-7 gap-1.5 sm:gap-2">
                   {questions.map((_, i) => (
                     <button
                       key={i}
                       onClick={() => goToQuestion(i)}
-                      className={`w-8 h-8 rounded text-sm font-semibold transition-all ${
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded text-xs sm:text-sm font-semibold transition-all flex items-center justify-center ${
                         i === index
                           ? 'bg-blue-500 text-white border-2 border-blue-700 scale-110'
                           : getQuestionStatusClass(i)
-                        }`}
+                      }`}
                     >
                       {i + 1}
                     </button>
