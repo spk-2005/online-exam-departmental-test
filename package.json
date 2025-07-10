@@ -6,9 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-      "postinstall": "node -e \"try { require('puppeteer').createBrowserFetcher().download(require('puppeteer').executablePath()) } catch (e) { console.log('Puppeteer download skipped') }\""
-
+    "lint": "next lint"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -20,8 +18,7 @@
     "multer": "^1.4.5-lts.1",
     "next": "14.2.5",
     "next-auth": "^4.24.7",
-    "puppeteer": "^21.6.1",
-    "puppeteer-core": "^21.6.1",
+    "puppeteer-core": "^10.4.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
