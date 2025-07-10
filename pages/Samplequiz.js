@@ -70,9 +70,9 @@ export default function Samplequiz() {
     if (hours > 0) {
       return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     } else if (minutes > 0) {
-      return `${minutes.toString().padStart(2, '0')} mins`;
+      return `${minutes.toString().padStart(2, '0')}m ${secs.toString().padStart(2, '0')}s`;
     } else {
-      return `${secs.toString().padStart(2, '0')} secs`;
+      return `${secs.toString().padStart(2, '0')}s`;
     }
   };
 
@@ -175,11 +175,9 @@ export default function Samplequiz() {
     }
 
     let scoreCalc = 0;
-    let attemptedCount = 0;
-
+    
     questions.forEach((q, i) => {
       if (selectedOption[i] !== undefined) {
-        attemptedCount++;
         if (selectedOption[i] === q.options[q.correct.charCodeAt(0) - 65]) {
           scoreCalc++;
         }
@@ -297,63 +295,63 @@ export default function Samplequiz() {
     };
 
     return (
-      <div className="min-h-screen bg-gray-100 py-12 flex items-center justify-center">
-        <div className="max-w-4xl w-full mx-auto px-4">
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">
+      <div className="min-h-screen bg-gray-100 py-6 sm:py-12 flex items-center justify-center p-4">
+        <div className="max-w-4xl w-full mx-auto">
+          <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8">
+            <h2 className="text-2xl sm:text-3xl font-bold text-center mb-6 sm:mb-8 text-gray-800">
               📊 Quiz Results
             </h2>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="text-center p-6 bg-blue-50 rounded-lg">
-                <div className="text-3xl font-bold text-blue-600 mb-2">{score}</div>
-                <div className="text-sm text-gray-600">Correct Answers</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+              <div className="text-center p-4 sm:p-6 bg-blue-50 rounded-lg">
+                <div className="text-2xl sm:text-3xl font-bold text-blue-600 mb-1 sm:mb-2">{score}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Correct Answers</div>
               </div>
 
-              <div className="text-center p-6 bg-green-50 rounded-lg">
-                <div className="text-3xl font-bold text-green-600 mb-2">{percentage}%</div>
-                <div className="text-sm text-gray-600">Percentage</div>
+              <div className="text-center p-4 sm:p-6 bg-green-50 rounded-lg">
+                <div className="text-2xl sm:text-3xl font-bold text-green-600 mb-1 sm:mb-2">{percentage}%</div>
+                <div className="text-xs sm:text-sm text-gray-600">Percentage</div>
               </div>
 
-              <div className="text-center p-6 bg-purple-50 rounded-lg">
-                <div className="text-3xl font-bold text-purple-600 mb-2">{attempted}</div>
-                <div className="text-sm text-gray-600">Attempted</div>
+              <div className="text-center p-4 sm:p-6 bg-purple-50 rounded-lg">
+                <div className="text-2xl sm:text-3xl font-bold text-purple-600 mb-1 sm:mb-2">{attempted}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Attempted</div>
               </div>
 
-              <div className="text-center p-6 bg-orange-50 rounded-lg">
-                <div className="text-3xl font-bold text-orange-600 mb-2">{questions.length - attempted}</div>
-                <div className="text-sm text-gray-600">Not Attempted</div>
+              <div className="text-center p-4 sm:p-6 bg-orange-50 rounded-lg">
+                <div className="text-2xl sm:text-3xl font-bold text-orange-600 mb-1 sm:mb-2">{questions.length - attempted}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Not Attempted</div>
               </div>
             </div>
 
-            <div className="text-center mb-8">
-              <div className={`text-4xl font-bold mb-4 ${
+            <div className="text-center mb-6 sm:mb-8">
+              <div className={`text-3xl sm:text-4xl font-bold mb-3 sm:mb-4 ${
                 percentage >= 40 ? 'text-green-600' : 'text-red-600'
                 }`}>
                 {percentage >= 40 ? '✅ PASS' : '❌ FAIL'}
               </div>
-              <div className="text-lg text-gray-600">
+              <div className="text-base sm:text-lg text-gray-600">
                 Time Taken: {formatElapsedTime(timeElapsedSeconds)}
               </div>
-              <div className="text-sm text-gray-500 mt-2">
+              <div className="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-2">
                 Candidate: {name} | Demo Quiz - General Knowledge
               </div>
             </div>
 
-            <div className="bg-gray-50 p-6 rounded-lg mb-6">
-              <h3 className="font-semibold text-gray-800 mb-4">Answer Review:</h3>
-              <div className="space-y-3 max-h-60 overflow-y-auto">
+            <div className="bg-gray-50 p-4 sm:p-6 rounded-lg mb-6">
+              <h3 className="font-semibold text-gray-800 mb-3 sm:mb-4 text-lg">Answer Review:</h3>
+              <div className="space-y-2 sm:space-y-3 max-h-60 overflow-y-auto pr-2">
                 {questions.map((q, i) => (
-                  <div key={i} className="flex items-start space-x-3 text-sm">
-                    <span className="font-medium text-gray-600 w-8">{i + 1}.</span>
+                  <div key={i} className="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-3 text-sm">
+                    <span className="font-medium text-gray-600 w-full sm:w-8 flex-shrink-0">{i + 1}.</span>
                     <div className="flex-1">
                       <div className="text-gray-800">{q.question}</div>
-                      <div className="mt-1">
+                      <div className="mt-1 flex flex-wrap items-center">
                         <span className="text-green-600 font-medium">
                           Correct: {q.options[q.correct.charCodeAt(0) - 65]}
                         </span>
                         {selectedOption[i] && (
-                          <span className={`ml-4 font-medium ${
+                          <span className={`ml-0 sm:ml-4 font-medium ${
                             selectedOption[i] === q.options[q.correct.charCodeAt(0) - 65] 
                               ? 'text-green-600' 
                               : 'text-red-600'
@@ -364,7 +362,7 @@ export default function Samplequiz() {
                           </span>
                         )}
                         {!selectedOption[i] && (
-                          <span className="ml-4 text-gray-500">Not attempted</span>
+                          <span className="ml-0 sm:ml-4 text-gray-500">Not attempted</span>
                         )}
                       </div>
                     </div>
@@ -376,7 +374,7 @@ export default function Samplequiz() {
             <div className="text-center">
               <button
                 onClick={resetQuiz}
-                className="bg-blue-500 text-white px-6 py-3 rounded-md hover:bg-blue-600 transition-colors"
+                className="bg-blue-500 text-white px-5 py-2.5 sm:px-6 sm:py-3 rounded-md hover:bg-blue-600 transition-colors text-base"
               >
                 Take Quiz Again
               </button>
@@ -393,48 +391,48 @@ export default function Samplequiz() {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-        <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-auto">
-          <h2 className="text-2xl font-bold mb-6 text-center">Submit Confirmation</h2>
+        <div className="bg-white rounded-lg p-6 sm:p-8 max-w-2xl w-full mx-auto">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">Submit Confirmation</h2>
 
-          <div className="overflow-x-auto mb-6">
-            <table className="min-w-full border-collapse border border-gray-300">
+          <div className="overflow-x-auto mb-4 sm:mb-6">
+            <table className="min-w-full border-collapse border border-gray-300 text-sm">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="border border-gray-300 p-3 text-left">Section</th>
-                  <th className="border border-gray-300 p-3 text-center">Total</th>
-                  <th className="border border-gray-300 p-3 text-center">Ans.</th>
-                  <th className="border border-gray-300 p-3 text-center">Not Ans.</th>
-                  <th className="border border-gray-300 p-3 text-center">Rev.</th>
-                  <th className="border border-gray-300 p-3 text-center">Ans. & Rev.</th>
-                  <th className="border border-gray-300 p-3 text-center">Not Visited</th>
+                  <th className="border border-gray-300 p-2 sm:p-3 text-left">Section</th>
+                  <th className="border border-gray-300 p-2 sm:p-3 text-center">Total</th>
+                  <th className="border border-gray-300 p-2 sm:p-3 text-center">Ans.</th>
+                  <th className="border border-gray-300 p-2 sm:p-3 text-center">Not Ans.</th>
+                  <th className="border border-gray-300 p-2 sm:p-3 text-center">Rev.</th>
+                  <th className="border border-gray-300 p-2 sm:p-3 text-center">Ans. & Rev.</th>
+                  <th className="border border-gray-300 p-2 sm:p-3 text-center">Not Visited</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td className="border border-gray-300 p-3 font-semibold">General Knowledge</td>
-                  <td className="border border-gray-300 p-3 text-center">{questions.length}</td>
-                  <td className="border border-gray-300 p-3 text-center">{stats.answered}</td>
-                  <td className="border border-gray-300 p-3 text-center">{stats.notAnswered}</td>
-                  <td className="border border-gray-300 p-3 text-center">{stats.review}</td>
-                  <td className="border border-gray-300 p-3 text-center">{stats.answeredMarked}</td>
-                  <td className="border border-gray-300 p-3 text-center">{stats.notVisited}</td>
+                  <td className="border border-gray-300 p-2 sm:p-3 font-semibold">General Knowledge</td>
+                  <td className="border border-gray-300 p-2 sm:p-3 text-center">{questions.length}</td>
+                  <td className="border border-gray-300 p-2 sm:p-3 text-center">{stats.answered}</td>
+                  <td className="border border-gray-300 p-2 sm:p-3 text-center">{stats.notAnswered}</td>
+                  <td className="border border-gray-300 p-2 sm:p-3 text-center">{stats.review}</td>
+                  <td className="border border-gray-300 p-2 sm:p-3 text-center">{stats.answeredMarked}</td>
+                  <td className="border border-gray-300 p-2 sm:p-3 text-center">{stats.notVisited}</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
           <div className="text-center">
-            <p className="text-lg mb-6">Are you sure you want to submit?</p>
-            <div className="flex justify-center space-x-4">
+            <p className="text-base sm:text-lg mb-4 sm:mb-6">Are you sure you want to submit?</p>
+            <div className="flex justify-center space-x-3 sm:space-x-4">
               <button
                 onClick={() => setShowSubmitConfirm(false)}
-                className="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600"
+                className="bg-gray-500 text-white px-5 py-2 rounded-md hover:bg-gray-600 text-sm sm:text-base"
               >
                 No
               </button>
               <button
                 onClick={handleSubmit}
-                className="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600"
+                className="bg-red-500 text-white px-5 py-2 rounded-md hover:bg-red-600 text-sm sm:text-base"
               >
                 Yes, Submit
               </button>
@@ -449,53 +447,54 @@ export default function Samplequiz() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col select-none">
       {/* Header */}
-      <div className="bg-gray-800 text-white p-3 flex justify-between items-center">
-        <div className="flex items-center">
-          <span className="text-yellow-400 font-bold text-lg">Demo Quiz - General Knowledge</span>
+      <div className="bg-gray-800 text-white p-3 flex justify-between items-center flex-wrap gap-2">
+        <div className="flex items-center text-sm sm:text-base">
+          <span className="text-yellow-400 font-bold">Demo Quiz - General Knowledge</span>
         </div>
-        <div className="text-sm">
+        <div className="text-xs sm:text-sm">
           <span>Time Remaining: </span>
           <span className="font-bold text-red-200">{formatTime(timer)}</span>
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         {/* Main Content */}
-        <div className={`flex-1 bg-white transition-all duration-300 overflow-y-auto ${showRightPanel ? 'mr-80' : 'mr-0'}`}>
+        <div className={`flex-1 bg-white transition-all duration-300 overflow-y-auto 
+                         ${showRightPanel ? 'md:mr-80' : 'md:mr-0'} p-0 sm:p-2`}>
           {/* Test Header */}
-          <div className="bg-blue-500 text-white p-3 flex justify-between items-center">
-            <div className="flex items-center space-x-2">
-              <span className="bg-blue-600 px-2 py-1 rounded text-sm font-semibold">
+          <div className="bg-blue-500 text-white p-3 flex flex-col sm:flex-row justify-between items-center rounded-t-md">
+            <div className="flex items-center space-x-2 mb-2 sm:mb-0">
+              <span className="bg-blue-600 px-2 py-1 rounded text-xs sm:text-sm font-semibold">
                 General Knowledge Quiz
               </span>
             </div>
-            <div className="text-right text-sm">
+            <div className="text-right text-xs sm:text-sm">
               <span>Question {index + 1} of {questions.length}</span>
             </div>
           </div>
 
           {/* Question Type */}
-          <div className="border-b border-gray-300 p-3 text-sm">
+          <div className="border-b border-gray-300 p-3 text-xs sm:text-sm">
             <span className="font-semibold">Question Type: Multiple Choice</span>
           </div>
 
           {/* Question Number */}
           <div className="border-b border-gray-300 p-3">
-            <span className="text-lg font-semibold">Question No. {index + 1}</span>
+            <span className="text-base sm:text-lg font-semibold">Question No. {index + 1}</span>
           </div>
 
           {/* Question Content */}
-          <div className="p-6 min-h-96">
-            <div className="mb-8">
-              <h3 className="text-lg font-medium text-gray-800 mb-6 leading-relaxed">
+          <div className="p-4 sm:p-6 min-h-[300px]"> {/* min-h for content visibility */}
+            <div className="mb-6 sm:mb-8">
+              <h3 className="text-base sm:text-lg font-medium text-gray-800 mb-4 sm:mb-6 leading-relaxed">
                 {questions[index].question}
               </h3>
 
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {questions[index].options.map((opt, i) => (
                   <label
                     key={i}
-                    className="flex items-start space-x-3 cursor-pointer p-3 hover:bg-gray-50 rounded border border-transparent hover:border-gray-200 transition-all"
+                    className="flex items-start space-x-3 cursor-pointer p-2 sm:p-3 hover:bg-gray-50 rounded border border-transparent hover:border-gray-200 transition-all text-sm sm:text-base"
                   >
                     <input
                       type="radio"
@@ -504,7 +503,7 @@ export default function Samplequiz() {
                       onChange={() => handleOptionChange(opt)}
                       className="w-4 h-4 text-blue-600 mt-1 flex-shrink-0"
                     />
-                    <span className="text-base text-gray-800 leading-relaxed">{opt}</span>
+                    <span className="leading-relaxed">{opt}</span>
                   </label>
                 ))}
               </div>
@@ -512,39 +511,39 @@ export default function Samplequiz() {
           </div>
 
           {/* Navigation Buttons */}
-          <div className="border-t border-gray-300 p-4 flex justify-between bg-gray-50">
-            <div className="flex space-x-2">
+          <div className="border-t border-gray-300 p-3 sm:p-4 flex flex-col sm:flex-row justify-between bg-gray-50 gap-2 sm:gap-0">
+            <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
               <button
                 onClick={prevQuestion}
                 disabled={index === 0}
-                className="px-4 py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 min-w-[100px] px-2 py-1.5 sm:px-4 sm:py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs sm:text-sm"
               >
                 Previous
               </button>
               <button
                 onClick={markReview}
-                className="px-4 py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                className="flex-1 min-w-[100px] px-2 py-1.5 sm:px-4 sm:py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 transition-colors text-xs sm:text-sm"
               >
                 Mark For Review
               </button>
               <button
                 onClick={clearResponse}
-                className="px-4 py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                className="flex-1 min-w-[100px] px-2 py-1.5 sm:px-4 sm:py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 transition-colors text-xs sm:text-sm"
               >
                 Clear Response
               </button>
             </div>
-            <div className="flex space-x-2">
+            <div className="flex flex-wrap gap-2 justify-center sm:justify-end mt-2 sm:mt-0">
               <button
                 onClick={() => setShowSubmitConfirm(true)}
-                className="px-6 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                className="flex-1 min-w-[100px] px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-sm sm:text-base"
               >
                 Submit
               </button>
               <button
                 onClick={nextQuestion}
                 disabled={index === questions.length - 1}
-                className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 min-w-[100px] px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base"
               >
                 Next
               </button>
@@ -553,67 +552,69 @@ export default function Samplequiz() {
         </div>
 
         {/* Right Panel */}
-        <div className={`fixed right-0 top-0 h-full w-80 bg-white border-l border-gray-300 transition-transform duration-300 z-40 ${showRightPanel ? 'translate-x-0' : 'translate-x-full'}`}>
-          {/* Toggle Button */}
+        <div className={`fixed right-0 top-0 h-full w-64 xs:w-72 sm:w-80 bg-white border-l border-gray-300 transition-transform duration-300 z-40 
+                         ${showRightPanel ? 'translate-x-0' : 'translate-x-full'} 
+                         md:relative md:translate-x-0 md:flex-shrink-0 md:flex-grow-0 md:h-auto`}>
+          {/* Toggle Button for smaller screens */}
           <button
             onClick={() => setShowRightPanel(!showRightPanel)}
-            className="absolute -left-8 top-1/2 transform -translate-y-1/2 bg-blue-500 text-white p-2 rounded-l hover:bg-blue-600 transition-colors z-50"
+            className="absolute -left-8 top-1/2 transform -translate-y-1/2 bg-blue-500 text-white p-2 rounded-l hover:bg-blue-600 transition-colors z-50 md:hidden"
           >
             {showRightPanel ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
           </button>
 
           <div className="h-full overflow-y-auto">
             {/* User Info */}
-            <div className="p-4 border-b border-gray-300 flex items-center space-x-3">
-              <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
-                <User className="w-8 h-8 text-gray-600" />
+            <div className="p-3 sm:p-4 border-b border-gray-300 flex items-center space-x-2 sm:space-x-3">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                <User className="w-6 h-6 sm:w-8 sm:h-8 text-gray-600" />
               </div>
               <div>
-                <div className="font-semibold text-gray-800">Candidate</div>
-                <div className="text-sm text-gray-600">{name}</div>
+                <div className="font-semibold text-gray-800 text-sm sm:text-base">Candidate</div>
+                <div className="text-xs sm:text-sm text-gray-600">{name}</div>
               </div>
             </div>
 
             {/* Timer */}
-            <div className="p-4 border-b border-gray-300 text-center">
-              <div className="flex items-center justify-center space-x-2 mb-2">
-                <Clock className="w-5 h-5 text-red-500" />
-                <span className="font-semibold text-gray-800">Time Remaining</span>
+            <div className="p-3 sm:p-4 border-b border-gray-300 text-center">
+              <div className="flex items-center justify-center space-x-1 sm:space-x-2 mb-1 sm:mb-2">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
+                <span className="font-semibold text-gray-800 text-sm sm:text-base">Time Remaining</span>
               </div>
-              <div className="text-2xl font-bold text-red-600">{formatTime(timer)}</div>
+              <div className="text-xl sm:text-2xl font-bold text-red-600">{formatTime(timer)}</div>
             </div>
 
             {/* Status Legend */}
-            <div className="p-4 border-b border-gray-300">
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 bg-gray-300 rounded text-center leading-6 font-semibold text-gray-700">
+            <div className="p-3 sm:p-4 border-b border-gray-300">
+              <div className="grid grid-cols-2 gap-1 sm:gap-2 text-xs sm:text-sm">
+                <div className="flex items-center space-x-1 sm:space-x-2">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-gray-300 rounded flex items-center justify-center font-semibold text-gray-700">
                     {getQuestionStats().notVisited}
                   </div>
                   <span>Not Visited</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 bg-red-500 text-white rounded text-center leading-6 font-semibold">
+                <div className="flex items-center space-x-1 sm:space-x-2">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-red-500 text-white rounded flex items-center justify-center font-semibold">
                     {getQuestionStats().notAnswered}
                   </div>
                   <span>Not Answered</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 bg-green-500 text-white rounded text-center leading-6 font-semibold">
+                <div className="flex items-center space-x-1 sm:space-x-2">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-green-500 text-white rounded flex items-center justify-center font-semibold">
                     {getQuestionStats().answered}
                   </div>
                   <span>Answered</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 bg-yellow-500 text-white rounded text-center leading-6 font-semibold">
+                <div className="flex items-center space-x-1 sm:space-x-2">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-yellow-500 text-white rounded flex items-center justify-center font-semibold">
                     {getQuestionStats().review}
                   </div>
                   <span>Review</span>
                 </div>
               </div>
-              <div className="mt-2 text-sm">
-                <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 bg-purple-500 text-white rounded text-center leading-6 font-semibold">
+              <div className="mt-1 sm:mt-2 text-xs sm:text-sm">
+                <div className="flex items-center space-x-1 sm:space-x-2">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-purple-500 text-white rounded flex items-center justify-center font-semibold">
                     {getQuestionStats().answeredMarked}
                   </div>
                   <span>Answered & Marked</span>
@@ -622,20 +623,20 @@ export default function Samplequiz() {
             </div>
 
             {/* Question Navigator */}
-            <div className="p-4">
-              <div className="bg-blue-500 text-white p-2 text-center font-semibold rounded-t">
+            <div className="p-3 sm:p-4">
+              <div className="bg-blue-500 text-white p-2 text-center font-semibold rounded-t text-sm sm:text-base">
                 General Knowledge Quiz
               </div>
-              <div className="bg-blue-300 text-white p-2 text-center font-semibold">
+              <div className="bg-blue-300 text-white p-2 text-center font-semibold text-sm sm:text-base">
                 Choose Question
               </div>
-              <div className="bg-gray-50 p-4 rounded-b">
-                <div className="grid grid-cols-5 gap-2">
+              <div className="bg-gray-50 p-3 sm:p-4 rounded-b">
+                <div className="grid grid-cols-4 xs:grid-cols-5 gap-2">
                   {questions.map((_, i) => (
                     <button
                       key={i}
                       onClick={() => goToQuestion(i)}
-                      className={`w-8 h-8 rounded text-sm font-semibold transition-all ${
+                      className={`w-7 h-7 xs:w-8 xs:h-8 rounded text-xs xs:text-sm font-semibold flex items-center justify-center transition-all ${
                         i === index
                           ? 'bg-blue-500 text-white border-2 border-blue-700 scale-110'
                           : getQuestionStatusClass(i)

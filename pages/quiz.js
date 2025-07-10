@@ -600,13 +600,11 @@ export default function Quiz() {
         </div>
         <div className="flex items-center space-x-3 sm:space-x-6 flex-wrap justify-end">
           <button
-            onClick={openQuestionPaper}
             className="flex items-center space-x-1 sm:space-x-2 hover:text-yellow-400 transition-colors text-xs sm:text-sm px-2 py-1 rounded"
           >
             📄 <span className="hidden sm:inline">Question Paper</span><span className="sm:hidden">Paper</span>
           </button>
           <button
-            onClick={openInstructions}
             className="flex items-center space-x-1 sm:space-x-2 hover:text-yellow-400 transition-colors text-xs sm:text-sm px-2 py-1 rounded"
           >
             👁 <span className="hidden sm:inline">View Instructions</span><span className="sm:hidden">Instructions</span>
