@@ -111,7 +111,6 @@ export default function Dashboard() {
       <main style={styles.main}>
         <div style={styles.contentWrapper}>
           <AvailableTests />
-          <PaymentRedirect />
         </div>
       </main>
     </div>

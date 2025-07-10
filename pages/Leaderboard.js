@@ -154,7 +154,7 @@ const Leaderboard = () => {
     }
 
     return (
-        <div className="min-h-full bg-gray-100 py-4 px-2 xs:px-4 sm:px-6 lg:px-8">
+        <div className="min-h-full  py-4 px-2 xs:px-4 sm:px-6 lg:px-8">
             <div className="max-w-7xl mx-auto">
                 {/* Header Section */}
                 <div className="bg-white rounded-lg shadow-md p-4 xs:p-5 sm:p-6 mb-4 border border-gray-200">

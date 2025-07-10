@@ -27,7 +27,6 @@ export default function PaymentRedirect() {
                         Back to Payment Info
                     </button>
                 </div>
-                {/* No selectedGroup passed here, as selection is not happening on this page */}
                 <PaymentForm />
             </div>
         );
@@ -40,8 +39,22 @@ export default function PaymentRedirect() {
                     Complete Your Payment
                 </h1>
                 <p className="text-lg text-gray-600 max-w-prose mx-auto mb-6">
-                    Follow the instructions below to make your payment, then proceed to verification. Each test group includes **3 tests** with **3 attempts** each, valid for **30 days**.
+                    Scan the QR code or use the UPI ID below to make your payment.
                 </p>
+                  {/* Price Information - Small Size Appearance */}
+            <div className="mt-10 p-6 bg-gray-50 rounded-xl border border-gray-200 shadow-sm text-center">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Group Pricing Information:</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm text-gray-700 max-w-2xl mx-auto">
+                    <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">EOT GROUP: <span className="font-bold text-blue-700">₹50</span></p>
+                    <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">GOT GROUP: <span className="font-bold text-blue-700">₹100</span></p>
+                    <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">EOT & GOT GROUP: <span className="font-bold text-blue-700">₹150</span></p>
+                    <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">CODE 8 & 10 GROUP: <span className="font-bold text-blue-700">₹100</span></p>
+                    <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">CODE 146 & 148 GROUP: <span className="font-bold text-blue-700">₹100</span></p>
+                </div>
+                <p className="text-xs text-gray-500 mt-4">
+                    Please ensure you make the **exact payment** for your chosen group to avoid delays in activation.
+                </p>
+            </div>
 
                 {/* PROCEED TO PAYMENT VERIFICATION BUTTON - Moved to the top */}
                 <button
@@ -60,16 +73,16 @@ export default function PaymentRedirect() {
 
             <hr className="my-8 border-gray-200" />
 
-            {/* Main content grid: QR code and Instructions */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start"> {/* items-start for consistent top alignment */}
+            {/* Main content grid: QR code only (instructions section removed) */}
+            <div className="grid grid-cols-1 justify-items-center"> {/* Centered content after removing 2-column layout */}
                 {/* Payment QR Code Section */}
-                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-lg flex flex-col"> {/* Added flex-col */}
+                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-lg flex flex-col w-full max-w-lg"> {/* Added max-w-lg for better width control */}
                     <h2 className="text-2xl font-bold text-gray-800 mb-5 text-center">
                         Scan to Pay
                     </h2>
 
                     {/* QR Code Image */}
-                    <div className="bg-white p-4 rounded-lg shadow-xl mb-6 flex justify-center flex-shrink-0"> {/* flex-shrink-0 to prevent shrinking */}
+                    <div className="bg-white p-4 rounded-lg shadow-xl mb-6 flex justify-center flex-shrink-0">
                         {/* Ensure your /public/scanner.jpg exists */}
                         <img
                             src="/scanner.jpg"
@@ -84,16 +97,16 @@ export default function PaymentRedirect() {
                     </p>
 
                     {/* UPI ID */}
-                    <div className="bg-blue-100 p-5 rounded-lg border border-blue-200 mt-6 flex-grow"> {/* flex-grow to push apps to bottom */}
+                    <div className="bg-blue-100 p-5 rounded-lg border border-blue-200 mt-6 flex-grow">
                         <h3 className="font-semibold text-blue-800 mb-3 text-lg">UPI ID:</h3>
                         <div className="flex items-center justify-between bg-white p-3 rounded-md border border-gray-300 shadow-sm">
-                            <span className="font-mono text-base sm:text-lg text-gray-700 select-all break-all">8309179509@ptyes</span> {/* break-all for long UPIs */}
+                            <span className="font-mono text-base sm:text-lg text-gray-700 select-all break-all">8309179509@ptyes</span>
                             <button
                                 onClick={() => {
                                     navigator.clipboard.writeText('8309179509@ptyes');
                                     alert('UPI ID copied to clipboard!');
                                 }}
-                                className="text-blue-600 hover:text-blue-800 text-sm sm:text-base font-medium transition-colors ml-4 py-1 px-3 rounded-md bg-blue-50 hover:bg-blue-100 whitespace-nowrap" // whitespace-nowrap to keep "Copy" on one line
+                                className="text-blue-600 hover:text-blue-800 text-sm sm:text-base font-medium transition-colors ml-4 py-1 px-3 rounded-md bg-blue-50 hover:bg-blue-100 whitespace-nowrap"
                             >
                                 Copy
                             </button>
@@ -103,7 +116,7 @@ export default function PaymentRedirect() {
                     {/* Payment Apps */}
                     <div className="mt-6">
                         <p className="text-sm text-gray-600 mb-3 font-medium">Supported Payment Apps:</p>
-                        <div className="flex flex-wrap gap-3 justify-center sm:justify-start"> {/* Center apps on small screens */}
+                        <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
                             {['GPay', 'PhonePe', 'Paytm', 'BHIM', 'Amazon Pay', 'WhatsApp Pay'].map(app => (
                                 <div key={app} className="bg-white p-2.5 rounded-md shadow-sm border border-gray-200 transform hover:scale-105 transition-transform">
                                     <span className="text-xs font-semibold text-gray-700">{app}</span>
@@ -112,53 +125,12 @@ export default function PaymentRedirect() {
                         </div>
                     </div>
                 </div>
-
-                {/* Instructions Section */}
-                <div className="bg-blue-50 p-6 rounded-xl border border-blue-200 shadow-lg h-full"> {/* h-full to make it fill the height of its grid column */}
-                    <h3 className="font-bold text-blue-800 mb-4 text-2xl">Payment Instructions:</h3>
-                    <ul className="text-base text-blue-700 space-y-3">
-                         <li className="flex items-start">
-                            <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-3 mt-0.5 flex-shrink-0 font-bold">1</span>
-                            <span>Note the **group you wish to purchase** (e.g., EOT Group for ₹50, GOT Group for ₹100, etc.) from the pricing information below.</span>
-                        </li>
-                        <li className="flex items-start">
-                            <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-3 mt-0.5 flex-shrink-0 font-bold">2</span>
-                            <span>Make payment for your chosen group's exact amount using the provided QR code or UPI ID.</span>
-                        </li>
-                        <li className="flex items-start">
-                            <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-3 mt-0.5 flex-shrink-0 font-bold">3</span>
-                            <span>**Take a screenshot** of the successful payment confirmation, ensuring the **UTR/Transaction ID** is clearly visible.</span>
-                        </li>
-                        <li className="flex items-start">
-                            <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-3 mt-0.5 flex-shrink-0 font-bold">4</span>
-                            <span>Click the "**Proceed to Payment Verification**" button (at the top of this page) to fill out the payment details form.</span>
-                        </li>
-                        <li className="flex items-start">
-                            <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-3 mt-0.5 flex-shrink-0 font-bold">5</span>
-                            <span>Your selected group will be **activated promptly** upon successful verification.</span>
-                        </li>
-                    </ul>
-                </div>
             </div>
 
-            {/* Price Information - Small Size Appearance */}
-            <div className="mt-10 p-6 bg-gray-50 rounded-xl border border-gray-200 shadow-sm text-center">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">Group Pricing Information:</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm text-gray-700 max-w-2xl mx-auto"> {/* Added max-w-2xl mx-auto for better alignment in grid */}
-                    <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">EOT GROUP: <span className="font-bold text-blue-700">₹50</span></p>
-                    <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">GOT GROUP: <span className="font-bold text-blue-700">₹100</span></p>
-                    <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">EOT & GOT GROUP: <span className="font-bold text-blue-700">₹150</span></p>
-                    <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">CODE 8 & 10 GROUP: <span className="font-bold text-blue-700">₹100</span></p>
-                    <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">CODE 146 & 148 GROUP: <span className="font-bold text-blue-700">₹100</span></p>
-                </div>
-                <p className="text-xs text-gray-500 mt-4">
-                    Please ensure you make the **exact payment** for your chosen group to avoid delays in activation.
-                </p>
-            </div>
+          
 
             <div className="text-sm text-gray-500 mt-6 text-center">
-                <p>🔒 Your payment information is secure and protected with **SSL encryption**.</p>
-            </div>
+                   </div>
         </div>
     );
 }
