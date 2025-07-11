@@ -6,13 +6,11 @@ import Image from 'next/image';
 export default function PaymentForm() {
     // Define the full list of groups here, as PaymentRedirect no longer passes a selectedGroup.
     const groups = [
-        { id: 1, name: 'EOT 141' },
-        { id: 2, name: 'GOT 88' },
-        { id: 3, name: 'GOT 97' },
-        { id: 4, name: 'CODE 08' },
-        { id: 5, name: 'CODE 10' },
-        { id: 6, name: 'CODE 146' },
-        { id: 7, name: 'CODE 148' }
+        { id: 1, name: 'EOT GROUP' },
+        { id: 2, name: 'GOT GROUP' },
+        { id: 3, name: 'EOT & GOT GROUP' },
+        { id: 4, name: 'CODE 8 & 10 GROUP' },
+        { id: 5, name: 'CODE 146 & 148 GROUP' }
     ];
 
     const [formData, setFormData] = useState({
@@ -164,7 +162,7 @@ export default function PaymentForm() {
             const data = await response.json();
 
             if (response.ok) {
-                setSuccessMessage('Payment details submitted successfully! Redirecting...');
+                setSuccessMessage('Payment details submitted successfully! We will Activate Your Account Within 1 hour if not contact Us!');
 
                 setFormData({
                     username: '',
@@ -179,9 +177,6 @@ export default function PaymentForm() {
                     fileInputRef.current.value = '';
                 }
 
-                setTimeout(() => {
-                    router.push('/dashboard');
-                }, 2000);
 
             } else {
                 if (data.details) {

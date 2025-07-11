@@ -1,337 +1,198 @@
-// pages/api/generate-pdf.js
-
-// Import both puppeteer (for local dev) and puppeteer-core
-import puppeteer from 'puppeteer'; 
-import puppeteerCore from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default async function handler(req, res) {
-    if (req.method !== 'GET') {
-        return res.status(405).json({ message: 'Method Not Allowed' });
-    }
+  try {
+    const {
+      name,
+      group,
+      test,
+      score,
+      total,
+      timeTaken,
+      percentage,
+      result,
+      attempted,
+      notAttempted
+    } = req.query;
 
-    const { name, group, test, score, total, timeTaken, percentage, result, attempted, notAttempted } = req.query;
+    const doc = new jsPDF();
+    
+    // Color scheme
+    const colors = {
+      primary: '#2563eb',      // Blue
+      secondary: '#1e40af',    // Dark blue
+      success: '#16a34a',      // Green
+      warning: '#d97706',      // Orange
+      danger: '#dc2626',       // Red
+      light: '#f8fafc',        // Light gray
+      dark: '#1e293b',         // Dark gray
+      text: '#374151'          // Medium gray
+    };
 
-    if (!name || !group || !test || score === undefined || total === undefined) {
-        return res.status(400).json({ message: 'Missing required parameters for PDF generation.' });
-    }
+    // Helper function to get result color
+    const getResultColor = (result) => {
+      if (result?.toLowerCase().includes('pass') || result?.toLowerCase().includes('excellent')) {
+        return colors.success;
+      } else if (result?.toLowerCase().includes('good') || result?.toLowerCase().includes('average')) {
+        return colors.warning;
+      } else {
+        return colors.danger;
+      }
+    };
 
-    let browser;
-    try {
-        let launchOptions = {};
-        let puppeteerInstance;
+    // Add header background
+    doc.setFillColor(colors.primary);
+    doc.rect(0, 0, 210, 35, 'F');
 
-        // Determine environment and set correct executablePath
-        if (process.env.VERCEL) {
-            // Vercel Production Environment: Use puppeteer-core and @sparticuz/chromium
-            puppeteerInstance = puppeteerCore;
-            launchOptions = {
-                args: chromium.args,
-                defaultViewport: chromium.defaultViewport,
-                executablePath: await chromium.executablePath(),
-                headless: chromium.headless,
-                ignoreHTTPSErrors: true,
-            };
-        } else {
-            // Local Development (Windows): Use standard puppeteer
-            puppeteerInstance = puppeteer;
-            launchOptions = {
-                headless: true,
-                args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                ],
-            };
+    // Title with white text
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Quiz Results Summary", 105, 22, { align: "center" });
+
+    // Reset text color
+    doc.setTextColor(colors.text);
+
+    // Student Information Section
+    doc.setFillColor(colors.light);
+    doc.rect(15, 45, 180, 60, 'F');
+    
+    // Section header
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(colors.secondary);
+    doc.text("Student Information", 20, 55);
+
+    // Student details
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(colors.text);
+    
+    const studentInfo = [
+      { label: 'UserName:', value: decodeURIComponent(name) },
+      { label: 'Group:', value: decodeURIComponent(group) },
+      { label: 'Test:', value: decodeURIComponent(test) },
+      { label: 'Time Taken:', value: timeTaken }
+    ];
+
+    studentInfo.forEach((info, index) => {
+      const yPos = 70 + (index * 10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(info.label, 25, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text(info.value, 75, yPos);
+    });
+
+    // Results Summary Section
+    const startY = 120;
+    
+    // Score highlight box
+    const scorePercentage = parseFloat(percentage);
+    const scoreColor = scorePercentage >= 80 ? colors.success : 
+                      scorePercentage >= 60 ? colors.warning : colors.danger;
+    
+    doc.setFillColor(scoreColor);
+    doc.rect(15, startY - 5, 180, 25, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Final Score: ${score}/${total} (${percentage}%)`, 105, startY + 8, { align: "center" });
+
+    // Results Table with enhanced styling
+    autoTable(doc, {
+      startY: startY + 30,
+      head: [["Metric", "Value", "Details"]],
+      body: [
+        ["Total Questions", total, "Questions in the quiz"],
+        ["Attempted", attempted, "Questions you answered"],
+        ["Not Attempted", notAttempted, "Questions you skipped"],
+        ["Correct Answers", score, "Your correct responses"],
+        ["Accuracy", `${percentage}%`, "Percentage of correct answers"],
+        ["Final Result", result, "Overall performance"]
+      ],
+      headStyles: {
+        fillColor: [37, 99, 235], // Primary blue
+        textColor: [255, 255, 255],
+        fontSize: 12,
+        fontStyle: 'bold',
+        halign: 'center'
+      },
+      bodyStyles: {
+        fontSize: 11,
+        textColor: [55, 65, 81],
+        alternateRowStyles: {
+          fillColor: [248, 250, 252]
         }
+      },
+      columnStyles: {
+        0: { fontStyle: 'bold', fillColor: [241, 245, 249] },
+        1: { halign: 'center', fontStyle: 'bold' },
+        2: { fontSize: 10, textColor: [107, 114, 128] }
+      },
+      margin: { left: 15, right: 15 },
+      tableLineColor: [203, 213, 225],
+      tableLineWidth: 0.5
+    });
 
-        browser = await puppeteerInstance.launch(launchOptions);
-        const page = await browser.newPage();
+    // Performance Analysis
+    const tableEndY = doc.lastAutoTable.finalY + 20;
+    
+    doc.setFillColor(colors.light);
+    doc.rect(15, tableEndY, 180, 35, 'F');
+    
+    doc.setTextColor(colors.secondary);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Performance Analysis", 20, tableEndY + 12);
 
-        // Set viewport for consistent rendering
-        await page.setViewport({ width: 1200, height: 800 });
-        
-        // --- Setting HTML Content ---
-        const htmlContent = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Quiz Result</title>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <style>
-                    /* ... (Your existing CSS remains the same) ... */
-                    * {
-                        margin: 0;
-                        padding: 0;
-                        box-sizing: border-box;
-                    }
-                    body {
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-                        margin: 0;
-                        padding: 20px;
-                        color: #333;
-                        background-color: #f8fafc;
-                        line-height: 1.6;
-                    }
-                    .container {
-                        max-width: 800px;
-                        margin: 0 auto;
-                        padding: 40px;
-                        border: 2px solid #e2e8f0;
-                        border-radius: 16px;
-                        background-color: #ffffff;
-                        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-                    }
-                    .header {
-                        text-align: center;
-                        margin-bottom: 30px;
-                        padding-bottom: 20px;
-                        border-bottom: 3px solid #3b82f6;
-                    }
-                    .header h1 {
-                        color: #1e293b;
-                        font-size: 2.5em;
-                        margin-bottom: 10px;
-                        font-weight: 700;
-                    }
-                    .header .subtitle {
-                        color: #64748b;
-                        font-size: 1.1em;
-                    }
-                    .info-section {
-                        margin-bottom: 30px;
-                        padding: 20px;
-                        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-                        border-radius: 12px;
-                        border-left: 5px solid #3b82f6;
-                    }
-                    .info-row {
-                        display: flex;
-                        justify-content: space-between;
-                        margin-bottom: 12px;
-                        padding: 8px 0;
-                    }
-                    .info-row:last-child {
-                        margin-bottom: 0;
-                    }
-                    .info-label {
-                        font-weight: 600;
-                        color: #374151;
-                        flex: 1;
-                    }
-                    .info-value {
-                        font-weight: 500;
-                        color: #1f2937;
-                        flex: 1;
-                        text-align: right;
-                    }
-                    .stats-grid {
-                        display: grid;
-                        grid-template-columns: repeat(2, 1fr);
-                        gap: 20px;
-                        margin-bottom: 30px;
-                    }
-                    .stat-card {
-                        text-align: center;
-                        padding: 25px;
-                        border-radius: 12px;
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-                        border: 1px solid #e5e7eb;
-                    }
-                    .stat-value {
-                        font-size: 2.5em;
-                        font-weight: 700;
-                        margin-bottom: 8px;
-                        line-height: 1;
-                    }
-                    .stat-label {
-                        font-size: 0.95em;
-                        color: #6b7280;
-                        font-weight: 500;
-                    }
-                    .score-card { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
-                    .score-value { color: #1d4ed8; }
-                    .percentage-card { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); }
-                    .percentage-value { color: #065f46; }
-                    .attempted-card { background: linear-gradient(135deg, #fae8ff 0%, #e879f9 100%); }
-                    .attempted-value { color: #7c2d12; }
-                    .missed-card { background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); }
-                    .missed-value { color: #9a3412; }
-                    .result-section {
-                        text-align: center;
-                        margin: 40px 0;
-                        padding: 30px;
-                        border-radius: 16px;
-                        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-                    }
-                    .result-pass {
-                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-                        color: white;
-                    }
-                    .result-fail {
-                        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-                        color: white;
-                    }
-                    .result-text {
-                        font-size: 3em;
-                        font-weight: 700;
-                        margin-bottom: 10px;
-                        text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-                    }
-                    .result-message {
-                        font-size: 1.2em;
-                        opacity: 0.9;
-                    }
-                    .footer {
-                        text-align: center;
-                        margin-top: 40px;
-                        padding-top: 20px;
-                        border-top: 2px dashed #d1d5db;
-                        color: #6b7280;
-                        font-size: 0.9em;
-                    }
-                    .timestamp {
-                        font-weight: 500;
-                        color: #4b5563;
-                    }
-                    @media print {
-                        body { background-color: white; }
-                        .container { box-shadow: none; }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>📊 Quiz Results Certificate</h1>
-                        <div class="subtitle">Official Test Performance Report</div>
-                    </div>
-
-                    <div class="info-section">
-                        <div class="info-row">
-                            <div class="info-label">👤 Candidate Name:</div>
-                            <div class="info-value">${decodeURIComponent(name)}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-label">📚 Test Category:</div>
-                            <div class="info-value">${decodeURIComponent(group)}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-label">📝 Test Name:</div>
-                            <div class="info-value">${decodeURIComponent(test)}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-label">⏱️ Time Taken:</div>
-                            <div class="info-value">${timeTaken}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-label">📊 Total Questions:</div>
-                            <div class="info-value">${total}</div>
-                        </div>
-                    </div>
-
-                    <div class="stats-grid">
-                        <div class="stat-card score-card">
-                            <div class="stat-value score-value">${score}</div>
-                            <div class="stat-label">Correct Answers</div>
-                        </div>
-                        <div class="stat-card percentage-card">
-                            <div class="stat-value percentage-value">${percentage}%</div>
-                            <div class="stat-label">Score Percentage</div>
-                        </div>
-                        <div class="stat-card attempted-card">
-                            <div class="stat-value attempted-value">${attempted}</div>
-                            <div class="stat-label">Questions Attempted</div>
-                        </div>
-                        <div class="stat-card missed-card">
-                            <div class="stat-value missed-value">${notAttempted}</div>
-                            <div class="stat-label">Questions Missed</div>
-                        </div>
-                    </div>
-
-                    <div class="result-section ${result === 'PASS' ? 'result-pass' : 'result-fail'}">
-                        <div class="result-text">
-                            ${result === 'PASS' ? '✅ PASSED' : '❌ FAILED'}
-                        </div>
-                        <div class="result-message">
-                            ${result === 'PASS' ? 'Congratulations! You have successfully passed the test.' : 'Unfortunately, you did not meet the passing criteria.'}
-                        </div>
-                    </div>
-
-                    <div class="footer">
-                        <div class="timestamp">
-                            Generated on: ${new Date().toLocaleDateString('en-IN', { 
-                                timeZone: 'Asia/Kolkata',
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                            })} at ${new Date().toLocaleTimeString('en-IN', { 
-                                timeZone: 'Asia/Kolkata',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit'
-                            })}
-                        </div>
-                        <div style="margin-top: 10px; font-size: 0.8em; color: #9ca3af;">
-                            This is a computer-generated certificate. No signature required.
-                        </div>
-                    </div>
-                </div>
-            </body>
-            </html>
-        `;
-
-        await page.setContent(htmlContent, {
-            // Wait for the DOM and network to be idle
-            waitUntil: ['networkidle0', 'domcontentloaded'],
-            timeout: 30000
-        });
-
-        // Ensure the page is ready for printing by setting the media type to 'print'
-        await page.emulateMediaType('print');
-
-        // Wait for the primary content to be rendered before generating the PDF.
-        // Waiting for the '.container' ensures the main layout is stable.
-        await page.waitForSelector('.container');
-
-        // Add a small delay (300ms) after the selector is found to ensure fonts/images are ready
-        await new Promise(resolve => setTimeout(resolve, 300)); 
-
-        const pdfBuffer = await page.pdf({
-            format: 'A4',
-            printBackground: true,
-            margin: {
-                top: '15mm',
-                right: '15mm',
-                bottom: '15mm',
-                left: '15mm',
-            },
-            // Removed preferCSSPageSize for potential compatibility issues if CSS print rules are complex
-            // preferCSSPageSize: true, 
-            displayHeaderFooter: false,
-        });
-
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="${decodeURIComponent(name)}_${decodeURIComponent(group)}_${decodeURIComponent(test)}_Result.pdf"`);
-        res.setHeader('Content-Length', pdfBuffer.length);
-        res.send(pdfBuffer);
-
-    } catch (error) {
-        console.error('PDF generation error:', error);
-        res.status(500).json({ 
-            message: 'Failed to generate PDF', 
-            error: error.message,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-        });
-    } finally {
-        if (browser) {
-            try {
-                await browser.close();
-            } catch (closeError) {
-                console.error('Error closing browser:', closeError);
-            }
-        }
+    doc.setTextColor(colors.text);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    
+    let analysis = "";
+    if (scorePercentage >= 90) {
+      analysis = "Excellent performance! You've mastered this topic.";
+    } else if (scorePercentage >= 80) {
+      analysis = "Great job! You have a strong understanding of the material.";
+    } else if (scorePercentage >= 70) {
+      analysis = "Good work! Consider reviewing the topics you missed.";
+    } else if (scorePercentage >= 60) {
+      analysis = "Keep practicing! Focus on areas that need improvement.";
+    } else {
+      analysis = "Additional study recommended. Review the material thoroughly.";
     }
+    
+    doc.text(analysis, 20, tableEndY + 25);
+
+    // Footer with gradient-like effect
+    const footerY = doc.internal.pageSize.height - 25;
+    doc.setFillColor(colors.primary);
+    doc.rect(0, footerY, 210, 25, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    
+    const currentDate = new Date().toLocaleString();
+    doc.text(`📅 Generated on: ${currentDate}`, 20, footerY + 10);
+    doc.text(`🎯 Quiz Management System`, 20, footerY + 18);
+    
+    // Add watermark
+    doc.setTextColor(240, 240, 240);
+    doc.setFontSize(60);
+    doc.setFont('helvetica', 'bold');
+
+    // Output as Blob
+    const pdfData = doc.output("arraybuffer");
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${decodeURIComponent(name)}_Quiz_Results.pdf"`);
+    res.status(200).send(Buffer.from(pdfData));
+
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+    res.status(500).json({ error: "Failed to generate PDF" });
+  }
 }

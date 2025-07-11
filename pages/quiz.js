@@ -1,9 +1,50 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/router";
-import { Clock, User, CheckCircle, AlertCircle, Circle, ChevronLeft, ChevronRight } from "lucide-react";
 
+import { Clock, User, CheckCircle, AlertCircle, Circle, ChevronLeft, ChevronRight } from "lucide-react";
+import { useRouter } from "next/router";
 export default function Quiz() {
+
+  useEffect(() => {
+  const handleBeforeUnload = (e) => {
+    e.preventDefault();
+    e.returnValue = "";  // Modern browsers ignore custom messages but this prevents reload
+  };
+
+  window.addEventListener("beforeunload", handleBeforeUnload);
+
+  return () => {
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+  };
+}, []);
+
+
+
+
   const router = useRouter();
+   useEffect(() => {
+    const handleBackButton = (event) => {
+      event.preventDefault();
+
+      const confirmLeave = window.confirm(
+        "If you go back, you'll lose your attempt. Are you sure you want to leave?"
+      );
+
+      if (confirmLeave) {
+        router.push("/"); // or your custom page
+      } else {
+        // pushState again to prevent navigation
+        history.pushState(null, null, location.href);
+      }
+    };
+
+    history.pushState(null, null, location.href);
+    window.addEventListener("popstate", handleBackButton);
+
+    return () => {
+      window.removeEventListener("popstate", handleBackButton);
+    };
+  }, [router]);
+
   const [group, setGroup] = useState("");
   const [test, setTest] = useState("");
 
@@ -23,6 +64,7 @@ export default function Quiz() {
     }
   };
 
+  
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedGroup = localStorage.getItem("quizGroup");
@@ -109,6 +151,10 @@ export default function Quiz() {
       setStatus(initialStatus);
 
       setError(null);
+
+
+              await decreaseAttempts();
+
     } catch (err) {
       console.error('Error fetching questions:', err);
       setError(`Failed to load questions: ${err.message}`);
@@ -116,6 +162,35 @@ export default function Quiz() {
       setLoading(false);
     }
   };
+const decreaseAttempts = async () => {
+  try {
+    const username = localStorage.getItem("username");
+    if (!username) return;
+
+    const res = await fetch("/api/decrease", {  // ensure correct route here
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        username: username,
+        group: decodeURIComponent(group),
+        testName: decodeURIComponent(test)
+      })
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("Failed to decrease attempts:", errorText);
+    } else {
+      const data = await res.json();
+      console.log("Attempts decreased:", data);
+    }
+  } catch (err) {
+    console.error("Error decreasing attempts:", err);
+  }
+};
+
 
   useEffect(() => {
     if (questions.length === 0) return;
@@ -141,6 +216,21 @@ export default function Quiz() {
       }
     };
   }, [questions.length, showSummary]); // Add showSummary to dependency array to prevent timer restart after submission
+useEffect(() => {
+  if (!showSummary) return;
+
+  const handlePopState = (e) => {
+    e.preventDefault();
+    router.replace("/");
+  };
+
+  window.history.pushState(null, null, window.location.href);
+  window.addEventListener("popstate", handlePopState);
+
+  return () => {
+    window.removeEventListener("popstate", handlePopState);
+  };
+}, [showSummary, router]);
 
 
   useEffect(() => {
@@ -208,78 +298,78 @@ export default function Quiz() {
     setIndex(questionIndex);
   };
 
-  const handleSubmit = async () => {
-    // Stop the timer immediately when submit is clicked
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
-      timerIntervalRef.current = null;
-    }
+const handleSubmit = async () => {
+  // Stop the timer immediately when submit is clicked
+  if (timerIntervalRef.current) {
+    clearInterval(timerIntervalRef.current);
+    timerIntervalRef.current = null;
+  }
 
-    try {
-      let scoreCalc = 0;
-      let attemptedCount = 0;
+  try {
+    let scoreCalc = 0;
+    let attemptedCount = 0;
 
-      questions.forEach((q, i) => {
-        if (selectedOption[i] !== undefined) { // Check if an option was truly selected for this question
-          attemptedCount++;
-          if (selectedOption[i] === q.options[q.correct.charCodeAt(0) - 65]) {
-            scoreCalc++;
-          }
-        }
-      });
-
-      setScore(scoreCalc);
-      setShowSummary(true);
-      setShowSubmitConfirm(false);
-
-      const actualUsername = localStorage.getItem('username') || name;
-
-      const totalTimeInSeconds = 7200;
-      const timeElapsedSeconds = totalTimeInSeconds - timer; // This correctly calculates time spent
-
-      const hoursTaken = Math.floor(timeElapsedSeconds / 3600);
-      const minutesTaken = Math.floor((timeElapsedSeconds % 3600) / 60);
-      const secondsTaken = timeElapsedSeconds % 60;
-      const formattedTimeTaken = `${hoursTaken.toString().padStart(2, '0')}:${minutesTaken.toString().padStart(2, '0')}:${secondsTaken.toString().padStart(2, '0')}`;
-
-      const resultData = {
-        name: actualUsername,
-        group: decodeURIComponent(group),
-        test: decodeURIComponent(test),
-        score: scoreCalc,
-        attempted: attemptedCount,
-        unattempted: questions.length - attemptedCount,
-        total: questions.length,
-        percentage: ((scoreCalc / questions.length) * 100).toFixed(2),
-        finalresult: ((scoreCalc / questions.length) * 100) >= 40 ? "PASS" : "FAIL",
-        timeTaken: formattedTimeTaken,
-        submittedAt: new Date().toISOString()
-      };
-
-      const submitRes = await fetch("/api/results/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(resultData)
-      });
-
-      if (!submitRes.ok) {
-        const errorText = await submitRes.text();
-        console.error('Failed to submit results:', errorText);
-      } else {
-        const responseData = await submitRes.json();
-        console.log('Submit response:', responseData);
-
-        if (responseData.attemptsDecreased) {
-          console.log('✅ Attempts successfully decreased');
-        } else {
-          console.log('❌ Attempts were NOT decreased');
-          console.log('Reason:', responseData.error || 'Unknown');
+    questions.forEach((q, i) => {
+      if (selectedOption[i] !== undefined) { // Check if an option was truly selected for this question
+        attemptedCount++;
+        if (selectedOption[i] === q.options[q.correct.charCodeAt(0) - 65]) {
+          scoreCalc++;
         }
       }
-    } catch (err) {
-      console.error('Error submitting results:', err);
+    });
+
+    setScore(scoreCalc);
+    setShowSummary(true);
+    setShowSubmitConfirm(false);
+
+    const actualUsername = localStorage.getItem('username') || name;
+
+    const totalTimeInSeconds = 7200;
+    const timeElapsedSeconds = totalTimeInSeconds - timer; // This correctly calculates time spent
+
+    const hoursTaken = Math.floor(timeElapsedSeconds / 3600);
+    const minutesTaken = Math.floor((timeElapsedSeconds % 3600) / 60);
+    const secondsTaken = timeElapsedSeconds % 60;
+    const formattedTimeTaken = `${hoursTaken.toString().padStart(2, '0')}:${minutesTaken.toString().padStart(2, '0')}:${secondsTaken.toString().padStart(2, '0')}`;
+
+    const resultData = {
+      name: actualUsername,
+      group: decodeURIComponent(group),
+      test: decodeURIComponent(test),
+      score: scoreCalc,
+      attempted: attemptedCount,
+      unattempted: questions.length - attemptedCount,
+      total: questions.length,
+      percentage: ((scoreCalc / questions.length) * 100).toFixed(2),
+      finalresult: ((scoreCalc / questions.length) * 100) >= 40 ? "PASS" : "FAIL",
+      timeTaken: formattedTimeTaken,
+      submittedAt: new Date().toISOString()
+    };
+
+    const submitRes = await fetch("/api/results/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(resultData)
+    });
+
+    if (!submitRes.ok) {
+      const errorText = await submitRes.text();
+      console.error('Failed to submit results:', errorText);
+    } else {
+      const responseData = await submitRes.json();
+      console.log('Submit response:', responseData);
+      
+      if (responseData.success) {
+        console.log('✅ Results successfully saved');
+      } else {
+        console.log('❌ Results were NOT saved');
+        console.log('Reason:', responseData.error || 'Unknown');
+      }
     }
-  };
+  } catch (err) {
+    console.error('Error submitting results:', err);
+  }
+};
 
   const getQuestionStats = () => {
     // Corrected logic for status counts
@@ -453,7 +543,7 @@ export default function Quiz() {
               </button>
 
               <button
-                onClick={() => router.push("/")}
+                onClick={() => router.replace("/")}
                 className="bg-blue-500 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-md hover:bg-blue-600 transition-colors text-sm sm:text-base"
               >
                 Back to Home
