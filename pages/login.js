@@ -49,7 +49,13 @@ export default function Login() {
 
   return (
     <div className={styles.container}>
+      
       <h2 className={styles.title}>Login</h2>
+      {message && (
+        <div className={`${styles.message} ${message.includes('✅') ? styles.messageSuccess : styles.messageError}`}>
+          {message}
+        </div>
+      )}
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.inputGroup}>
           <label className={styles.label}>Username</label>
@@ -83,11 +89,7 @@ export default function Login() {
           {isLoading ? 'Logging in...' : 'Login'}
         </button>
       </form>
-      {message && (
-        <div className={`${styles.message} ${message.includes('✅') ? styles.messageSuccess : styles.messageError}`}>
-          {message}
-        </div>
-      )}
+      
     </div>
   );
 }
