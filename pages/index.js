@@ -214,21 +214,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Payment Note (only if not authenticated) */}
-        {!isAuthenticated && (
-          <div className="mt-8 lg:mt-12 bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 rounded-3xl p-6 sm:p-8 shadow-xl border border-teal-200/50">
-            <div className="text-center">
-              <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-              </div>
-              <p className="text-teal-800 text-sm sm:text-base lg:text-lg leading-relaxed max-w-3xl mx-auto">
-                <strong className="text-teal-900">త్వరిత చిట్కా (Quick Tip):</strong> మీరు చెల్లింపు వివరాలను నేరుగా సమర్పించవచ్చు, లేదా మీ ఖాతాకు సజావుగా లింక్ చేయడానికి మరియు మీ పురోగతిని ట్రాక్ చేయడానికి <strong className="text-teal-900">ముందుగా లాగిన్ చేయండి</strong>! (You can submit payment details directly, or <strong className="text-teal-900">log in first</strong> to seamlessly link them to your account and track your progress!)
-              </p>
-            </div>
-          </div>
-        )}
+      
       </main>
 
       {/* Contact Section */}

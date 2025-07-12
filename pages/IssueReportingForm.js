@@ -82,7 +82,7 @@ const IssueReportingForm = () => {
                 ) : (
                     // Ask for username if not found in localStorage
                     <div>
-                        <label htmlFor="username" className="block text-sm font-medium text-gray-700">వాడుకరి పేరు (Username) (Required)</label>
+                        <label htmlFor="username" className="block text-sm font-medium text-gray-700"> పేరు (Your Full Name) (Required)</label>
                         <input
                             type="text"
                             id="username"

@@ -39,44 +39,44 @@ export default function PaymentRedirect() {
                     Complete Your Payment
                 </h1>
                 <p className="text-lg text-gray-600 max-w-prose mx-auto mb-6">
-                     దయచేసి మీరు ఎంచుకున్న గ్రూప్‌కి సరిపోయే ఖచ్చితమైన మొత్తం చెల్లించండి.
+                    దయచేసి మీరు ఎంచుకున్న గ్రూప్‌కి సరిపోయే ఖచ్చితమైన మొత్తం చెల్లించండి.
                 </p>
-                  {/* Price Information - Small Size Appearance */}
-            <div className="mt-10 p-6 bg-gray-50 rounded-xl border border-gray-200 shadow-sm text-center">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">గ్రూప్ ధర సమాచారం:</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm text-gray-700 max-w-2xl mx-auto">
-                    <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">EOT GROUP: <span className="font-bold text-blue-700">₹50</span></p>
-                    <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">GOT GROUP: <span className="font-bold text-blue-700">₹100</span></p>
-                    <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">EOT & GOT GROUP: <span className="font-bold text-blue-700">₹150</span></p>
-                    <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">CODE 8 & 10 GROUP: <span className="font-bold text-blue-700">₹100</span></p>
-                    <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">CODE 146 & 148 GROUP: <span className="font-bold text-blue-700">₹100</span></p>
+                
+                {/* Note about payment process */}
+                <div className="bg-yellow-50 p-4 rounded-xl border-l-4 border-yellow-500 text-gray-800 text-base mb-10 shadow-sm">
+                    <p className="font-bold text-lg mb-2 text-yellow-800">
+                        ముందుగా పేమెంట్ పూర్తి చేయండి:
+                    </p>
+                    <p className="font-medium">
+                        ముందుగా కింద ఉన్న స్కానర్ కానీ లేదా UPI ID ఉపయోగించి పేమెంట్ పూర్తి చేయండి. ఆ తర్వాత పేమెంట్ వెరిఫికేషన్ ఫారం ఫిల్ చేయండి.
+                    </p>
+                    <p className="text-sm mt-2 text-gray-600 italic">
+                        (First, complete the payment using the scanner or UPI ID below, and then fill out the payment verification form.)
+                    </p>
                 </div>
-                <p className="text-xs text-gray-500 mt-4">
-                    Please ensure you make the **exact payment** for your chosen group to avoid delays in activation.
-                </p>
+
+                {/* Price Information - Small Size Appearance */}
+                <div className="mt-10 p-6 bg-gray-50 rounded-xl border border-gray-200 shadow-sm text-center">
+                    <h3 className="text-xl font-bold text-gray-800 mb-4">గ్రూప్ ధర సమాచారం:</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm text-gray-700 max-w-2xl mx-auto">
+                        <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">EOT GROUP: <span className="font-bold text-blue-700">₹50</span></p>
+                        <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">GOT GROUP: <span className="font-bold text-blue-700">₹100</span></p>
+                        <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">EOT & GOT GROUP: <span className="font-bold text-blue-700">₹150</span></p>
+                        <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">CODE 8 & 10 GROUP: <span className="font-bold text-blue-700">₹100</span></p>
+                        <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">CODE 146 & 148 GROUP: <span className="font-bold text-blue-700">₹100</span></p>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-4">
+                        Please ensure you make the **exact payment** for your chosen group to avoid delays in activation.
+                    </p>
+                </div>
             </div>
 
-                {/* PROCEED TO PAYMENT VERIFICATION BUTTON - Moved to the top */}
-                <button
-                    onClick={handleProceedToForm}
-                    className="inline-flex items-center justify-center px-10 py-4 rounded-xl font-bold text-lg sm:text-xl
-                        bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg
-                        hover:from-blue-700 hover:to-blue-900 transform hover:scale-105 transition-all duration-300
-                        focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-offset-2 mb-8"
-                >
-                    <svg className="w-6 h-6 sm:w-7 sm:h-7 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    మీ పేమెంట్‌ని నిర్ధారించడానికి ఇక్కడ క్లిక్ చేయండి
-                </button>
-            </div>
+            <hr className="my-12 border-gray-200" />
 
-            <hr className="my-8 border-gray-200" />
-
-            {/* Main content grid: QR code only (instructions section removed) */}
-            <div className="grid grid-cols-1 justify-items-center"> {/* Centered content after removing 2-column layout */}
+            {/* Main content grid: QR code and UPI ID section */}
+            <div className="grid grid-cols-1 justify-items-center">
                 {/* Payment QR Code Section */}
-                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-lg flex flex-col w-full max-w-lg"> {/* Added max-w-lg for better width control */}
+                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-lg flex flex-col w-full max-w-lg">
                     <h2 className="text-2xl font-bold text-gray-800 mb-5 text-center">
                         Scan to Pay
                     </h2>
@@ -127,10 +127,24 @@ export default function PaymentRedirect() {
                 </div>
             </div>
 
-          
-
+            {/* PROCEED TO PAYMENT VERIFICATION BUTTON */}
+            <div className="mt-16 text-center">
+                <button
+                    onClick={handleProceedToForm}
+                    className="inline-flex items-center justify-center px-10 py-4 rounded-xl font-bold text-lg sm:text-xl
+                        bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg
+                        hover:from-blue-700 hover:to-blue-900 transform hover:scale-105 transition-all duration-300
+                        focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-offset-2"
+                >
+                    <svg className="w-6 h-6 sm:w-7 sm:h-7 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    మీ పేమెంట్‌ని నిర్ధారించడానికి ఇక్కడ క్లిక్ చేయండి
+                </button>
+            </div>
+            
             <div className="text-sm text-gray-500 mt-6 text-center">
-                   </div>
+            </div>
         </div>
     );
 }

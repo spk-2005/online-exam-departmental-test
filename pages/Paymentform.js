@@ -291,7 +291,7 @@ export default function PaymentForm() {
 
                     {/* Group Selection (Multi-select checkboxes) */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">గ్రూప్‌లు ఎంచుకోండి (Select Groups) *</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">కొనుగోలు చేసిన గ్రూప్‌ల ని ఎంచుకోండి(Select Groups) *</label>
                         <div className="space-y-2">
                             {groups.map((group) => (
                                 <label key={group.id} className="flex items-center space-x-3">

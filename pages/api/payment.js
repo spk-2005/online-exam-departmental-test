@@ -5,12 +5,12 @@ import multer from 'multer';
 import path from 'path';
 import { promises as fs } from 'fs';
 
-// --- Multer Configuration ---
+// --- Multer Configuration (No Change) ---
 
 // Ensure the uploads directory exists
 const uploadDir = path.join(process.cwd(), 'public/uploads');
 
-// Helper function to ensure directory exists (optional, but good practice)
+// Helper function to ensure directory exists
 async function ensureUploadDir() {
     try {
         await fs.access(uploadDir);
@@ -31,7 +31,6 @@ const storage = multer.diskStorage({
         cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
-        // Create a unique filename with the original extension
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         const fileExtension = path.extname(file.originalname);
         cb(null, `${file.fieldname}-${uniqueSuffix}${fileExtension}`);
@@ -40,9 +39,8 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// --- Middleware Helper ---
+// --- Middleware Helper (No Change) ---
 
-// Next.js API routes require a custom way to run Multer as middleware
 function runMiddleware(req, res, fn) {
     return new Promise((resolve, reject) => {
         fn(req, res, (result) => {
@@ -54,7 +52,7 @@ function runMiddleware(req, res, fn) {
     });
 }
 
-// --- Next.js Config (Required for Multer) ---
+// --- Next.js Config (No Change) ---
 
 export const config = {
     api: {
@@ -62,12 +60,15 @@ export const config = {
     },
 };
 
-// --- API Handler ---
+// --- API Handler (Modified to use findOneAndUpdate with upsert) ---
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ success: false, error: 'Method not allowed' });
     }
+
+    // Variable to store the path of the uploaded file if needed for cleanup
+    let uploadedFilePath = null;
 
     try {
         // 1. Connect to MongoDB
@@ -77,6 +78,11 @@ export default async function handler(req, res) {
         // 2. Process file upload using Multer middleware
         await runMiddleware(req, res, upload.single('screenshot'));
 
+        // Store the uploaded file path for potential cleanup later if an error occurs
+        if (req.file) {
+            uploadedFilePath = req.file.path;
+        }
+
         // 3. Extract data from the body and validate
         const { name, phoneNumber, selectedGroups } = req.body;
         
@@ -84,8 +90,7 @@ export default async function handler(req, res) {
         try {
             parsedSelectedGroups = JSON.parse(selectedGroups);
             
-            // VALIDATION MODIFICATION: 
-            // Check if it is an array, has content, AND every item is a valid string.
+            // VALIDATION: Check if it is an array, has content, AND every item is a valid string.
             if (!Array.isArray(parsedSelectedGroups) || parsedSelectedGroups.length === 0 || 
                 !parsedSelectedGroups.every(group => typeof group === 'string' && group.trim() !== '')) {
                 throw new Error('Invalid format or missing groups for selectedGroups');
@@ -93,8 +98,8 @@ export default async function handler(req, res) {
         } catch (e) {
             console.error("Invalid group data format:", e.message);
             // Delete the uploaded file if validation fails after upload
-            if (req.file) {
-                await fs.unlink(req.file.path).catch(err => console.error("Failed to delete temp file:", err));
+            if (uploadedFilePath) {
+                await fs.unlink(uploadedFilePath).catch(err => console.error("Failed to delete temp file:", err));
             }
             return res.status(400).json({ 
                 success: false,
@@ -103,9 +108,9 @@ export default async function handler(req, res) {
             });
         }
         
-        if (!name || !phoneNumber || !req.file) {
-            if (req.file) {
-                await fs.unlink(req.file.path).catch(err => console.error("Failed to delete temp file:", err));
+        if (!name || !phoneNumber || !uploadedFilePath) {
+            if (uploadedFilePath) {
+                await fs.unlink(uploadedFilePath).catch(err => console.error("Failed to delete temp file:", err));
             }
             return res.status(400).json({ 
                 success: false, 
@@ -116,8 +121,8 @@ export default async function handler(req, res) {
         // Basic phone number validation
         const phoneRegex = /^\d{10,15}$/;
         if (!phoneRegex.test(phoneNumber)) {
-            if (req.file) {
-                await fs.unlink(req.file.path).catch(err => console.error("Failed to delete temp file:", err));
+            if (uploadedFilePath) {
+                await fs.unlink(uploadedFilePath).catch(err => console.error("Failed to delete temp file:", err));
             }
             return res.status(400).json({ 
                 success: false, 
@@ -126,20 +131,32 @@ export default async function handler(req, res) {
             });
         }
 
-        // 4. Create new payment record and save to MongoDB
-        const payment = new Payment({
+        // 4. Implement Upsert Logic: Find by phoneNumber and update or create
+        const paymentData = {
             name: name.trim(),
             phoneNumber: phoneNumber.trim(),
-            // Store the path to the saved file in the database
-            screenshot: `/uploads/${req.file.filename}`, 
-            // This will now successfully store the array of strings
-            selectedGroups: parsedSelectedGroups 
-        });
+            // Store the public path to the saved file
+            screenshot: `/uploads/${path.basename(uploadedFilePath)}`, 
+            selectedGroups: parsedSelectedGroups,
+            // We ensure we update the updatedAt field on every submission
+            updatedAt: new Date()
+        };
+        
+        // Find a payment record by phoneNumber. If found, update it. If not, create it.
+        const savedPayment = await Payment.findOneAndUpdate(
+            { phoneNumber: paymentData.phoneNumber }, // Filter: Find by phone number
+            paymentData, // Data to update/insert
+            { 
+                new: true, // Return the updated document
+                upsert: true, // Create if it doesn't exist (UPSERT)
+                setDefaultsOnInsert: true // Applies schema defaults if inserting
+            }
+        );
 
-        const savedPayment = await payment.save();
-        console.log('Payment record saved to MongoDB:', savedPayment._id);
+        console.log('Payment record processed (Upserted). ID:', savedPayment._id);
 
         // 5. Trigger the notification API route asynchronously.
+        // (No change to notification logic)
         fetch('http://localhost:3000/api/notify', {
             method: 'POST',
             headers: {
@@ -159,7 +176,7 @@ export default async function handler(req, res) {
         // 6. Send success response to the client immediately
         res.status(201).json({
             success: true,
-            message: 'Payment details saved successfully. Notification triggered asynchronously.',
+            message: 'Payment details saved/updated successfully. Notification triggered asynchronously.',
             data: {
                 id: savedPayment._id,
                 name: savedPayment.name,
@@ -175,12 +192,18 @@ export default async function handler(req, res) {
         // General error handling
         console.error('Server Error during payment processing:', error);
         
-        // If an error occurred after the file was uploaded but before the database save, try to delete the file
-        if (req.file) {
-            await fs.unlink(req.file.path).catch(err => console.error("Failed to delete temp file during error handling:", err));
+        // If an error occurred and a file was uploaded, try to delete the file
+        if (uploadedFilePath) {
+            await fs.unlink(uploadedFilePath).catch(err => console.error("Failed to delete uploaded file during error handling:", err));
         }
 
-        // Ensure a response is sent if the headers haven't been sent already
+        // Send a specific error code if we detect a database duplicate key error (code 11000)
+        // Although upsert should prevent most duplicate key errors based on phoneNumber, 
+        // this is good practice for general database errors.
+        if (error.code === 11000) {
+            return res.status(409).json({ success: false, error: 'A record with this phone number already exists.' });
+        }
+
         if (!res.headersSent) {
             res.status(500).json({ success: false, error: 'Internal Server Error.' });
         }
