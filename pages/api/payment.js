@@ -1,198 +1,188 @@
-// pages/api/payments.js
+// pages/api/payment.js
 import connectMongo from '@/pages/api/lib/mongodb';
 import Payment from '@/pages/api/lib/models/Payment';
 import multer from 'multer';
 import path from 'path';
 import { promises as fs } from 'fs';
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: async function (req, file, cb) {
-    const uploadPath = path.join(process.cwd(), 'public/uploads');
+// --- Multer Configuration ---
+
+// Ensure the uploads directory exists
+const uploadDir = path.join(process.cwd(), 'public/uploads');
+
+// Helper function to ensure directory exists (optional, but good practice)
+async function ensureUploadDir() {
     try {
-      await fs.mkdir(uploadPath, { recursive: true });
+        await fs.access(uploadDir);
     } catch (error) {
-      console.error('Error creating upload directory:', error);
+        if (error.code === 'ENOENT') {
+            await fs.mkdir(uploadDir, { recursive: true });
+            console.log('Created uploads directory.');
+        } else {
+            throw error;
+        }
     }
-    cb(null, uploadPath);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({ 
-  storage: storage,
-  fileFilter: function (req, file, cb) {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed!'), false);
-    }
-  },
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  }
-});
-
-// Helper function to run multer middleware
-function runMiddleware(req, res, fn) {
-  return new Promise((resolve, reject) => {
-    fn(req, res, (result) => {
-      if (result instanceof Error) {
-        return reject(result);
-      }
-      return resolve(result);
-    });
-  });
 }
 
-// Disable the default body parser for this route
+// Multer disk storage configuration
+const storage = multer.diskStorage({
+    destination: async (req, file, cb) => {
+        await ensureUploadDir();
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        // Create a unique filename with the original extension
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const fileExtension = path.extname(file.originalname);
+        cb(null, `${file.fieldname}-${uniqueSuffix}${fileExtension}`);
+    },
+});
+
+const upload = multer({ storage });
+
+// --- Middleware Helper ---
+
+// Next.js API routes require a custom way to run Multer as middleware
+function runMiddleware(req, res, fn) {
+    return new Promise((resolve, reject) => {
+        fn(req, res, (result) => {
+            if (result instanceof Error) {
+                return reject(result);
+            }
+            return resolve(result);
+        });
+    });
+}
+
+// --- Next.js Config (Required for Multer) ---
+
 export const config = {
-  api: {
-    bodyParser: false,
-  },
+    api: {
+        bodyParser: false, // Disable Next.js body parser to allow Multer to handle it
+    },
 };
 
+// --- API Handler ---
+
 export default async function handler(req, res) {
-  // Handle CORS for frontend requests
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method !== 'POST') {
+        return res.status(405).json({ success: false, error: 'Method not allowed' });
+    }
 
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
-  if (req.method === 'GET') {
     try {
-      await connectMongo();
-      const payments = await Payment.find({}).sort({ createdAt: -1 }).lean();
-      res.status(200).json({ success: true, data: payments });
+        // 1. Connect to MongoDB
+        await connectMongo();
+        console.log('MongoDB connected successfully.');
+
+        // 2. Process file upload using Multer middleware
+        await runMiddleware(req, res, upload.single('screenshot'));
+
+        // 3. Extract data from the body and validate
+        const { name, phoneNumber, selectedGroups } = req.body;
+        
+        let parsedSelectedGroups;
+        try {
+            parsedSelectedGroups = JSON.parse(selectedGroups);
+            
+            // VALIDATION MODIFICATION: 
+            // Check if it is an array, has content, AND every item is a valid string.
+            if (!Array.isArray(parsedSelectedGroups) || parsedSelectedGroups.length === 0 || 
+                !parsedSelectedGroups.every(group => typeof group === 'string' && group.trim() !== '')) {
+                throw new Error('Invalid format or missing groups for selectedGroups');
+            }
+        } catch (e) {
+            console.error("Invalid group data format:", e.message);
+            // Delete the uploaded file if validation fails after upload
+            if (req.file) {
+                await fs.unlink(req.file.path).catch(err => console.error("Failed to delete temp file:", err));
+            }
+            return res.status(400).json({ 
+                success: false,
+                error: 'Invalid or missing group selection format',
+                details: ['Please select a valid test group.']
+            });
+        }
+        
+        if (!name || !phoneNumber || !req.file) {
+            if (req.file) {
+                await fs.unlink(req.file.path).catch(err => console.error("Failed to delete temp file:", err));
+            }
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Missing required fields or screenshot.',
+            });
+        }
+
+        // Basic phone number validation
+        const phoneRegex = /^\d{10,15}$/;
+        if (!phoneRegex.test(phoneNumber)) {
+            if (req.file) {
+                await fs.unlink(req.file.path).catch(err => console.error("Failed to delete temp file:", err));
+            }
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Invalid phone number format.',
+                details: ['Phone number must be 10-15 digits.']
+            });
+        }
+
+        // 4. Create new payment record and save to MongoDB
+        const payment = new Payment({
+            name: name.trim(),
+            phoneNumber: phoneNumber.trim(),
+            // Store the path to the saved file in the database
+            screenshot: `/uploads/${req.file.filename}`, 
+            // This will now successfully store the array of strings
+            selectedGroups: parsedSelectedGroups 
+        });
+
+        const savedPayment = await payment.save();
+        console.log('Payment record saved to MongoDB:', savedPayment._id);
+
+        // 5. Trigger the notification API route asynchronously.
+        fetch('http://localhost:3000/api/notify', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: savedPayment.name,
+                phoneNumber: savedPayment.phoneNumber,
+                selectedGroups: savedPayment.selectedGroups,
+                screenshot: savedPayment.screenshot
+            }),
+        })
+        .catch(notificationError => {
+            console.error('Error during asynchronous notification API call:', notificationError.message);
+        });
+
+        // 6. Send success response to the client immediately
+        res.status(201).json({
+            success: true,
+            message: 'Payment details saved successfully. Notification triggered asynchronously.',
+            data: {
+                id: savedPayment._id,
+                name: savedPayment.name,
+                phoneNumber: savedPayment.phoneNumber,
+                selectedGroups: savedPayment.selectedGroups,
+                screenshot: savedPayment.screenshot,
+                createdAt: savedPayment.createdAt,
+                updatedAt: savedPayment.updatedAt
+            }
+        });
+
     } catch (error) {
-      console.error('Error fetching payments:', error);
-      res.status(500).json({ success: false, error: 'Failed to fetch payments' });
+        // General error handling
+        console.error('Server Error during payment processing:', error);
+        
+        // If an error occurred after the file was uploaded but before the database save, try to delete the file
+        if (req.file) {
+            await fs.unlink(req.file.path).catch(err => console.error("Failed to delete temp file during error handling:", err));
+        }
+
+        // Ensure a response is sent if the headers haven't been sent already
+        if (!res.headersSent) {
+            res.status(500).json({ success: false, error: 'Internal Server Error.' });
+        }
     }
-    return;
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, error: 'Method not allowed' });
-  }
-
-  try {
-    // Connect to MongoDB
-    await connectMongo();
-
-    // Run multer middleware
-    await runMiddleware(req, res, upload.single('screenshot'));
-
-    // Extract form data
-    const { username, name, phoneNumber, transactionId, selectedGroup } = req.body;
-
-    // Validate required fields
-    if (!username || !name || !phoneNumber || !transactionId || !selectedGroup || !req.file) {
-      return res.status(400).json({ 
-        success: false,
-        error: 'All fields are required: username, name, phoneNumber, transactionId, selectedGroup, and screenshot' 
-      });
-    }
-
-    // Validate phone number format
-    const phoneRegex = /^\d{10,15}$/;
-    if (!phoneRegex.test(phoneNumber)) {
-      return res.status(400).json({ 
-        success: false,
-        error: 'Phone number must be between 10-15 digits' 
-      });
-    }
-
-    // Check if transaction ID already exists
-    const existingPayment = await Payment.findOne({ transactionId: transactionId.trim() }).lean();
-    if (existingPayment) {
-      return res.status(400).json({ 
-        success: false,
-        error: 'Transaction ID already exists' 
-      });
-    }
-
-    // Validate selectedGroup
-    const groupNumber = parseInt(selectedGroup);
-    if (isNaN(groupNumber) || groupNumber < 1 || groupNumber > 4) {
-      return res.status(400).json({ 
-        success: false,
-        error: 'Selected group must be between 1 and 4' 
-      });
-    }
-
-    // Create new payment record
-    const payment = new Payment({
-      username: username.trim(),
-      name: name.trim(),
-      phoneNumber: phoneNumber.trim(),
-      screenshot: `/uploads/${req.file.filename}`, // Store relative path
-      transactionId: transactionId.trim(),
-      selectedGroup: groupNumber
-    });
-
-    const savedPayment = await payment.save();
-
-    res.status(201).json({
-      success: true,
-      message: 'Payment details saved successfully',
-      data: {
-        id: savedPayment._id,
-        username: savedPayment.username,
-        name: savedPayment.name,
-        phoneNumber: savedPayment.phoneNumber,
-        transactionId: savedPayment.transactionId,
-        selectedGroup: savedPayment.selectedGroup,
-        screenshot: savedPayment.screenshot,
-        createdAt: savedPayment.createdAt,
-        updatedAt: savedPayment.updatedAt
-      }
-    });
-
-  } catch (error) {
-    console.error('Error saving payment:', error);
-    
-    // Handle multer errors
-    if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ 
-        success: false,
-        error: 'File size too large. Maximum size is 5MB' 
-      });
-    }
-    
-    if (error.message === 'Only image files are allowed!') {
-      return res.status(400).json({ 
-        success: false,
-        error: 'Only image files are allowed' 
-      });
-    }
-    
-    // Handle specific MongoDB errors
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map(err => err.message);
-      return res.status(400).json({ 
-        success: false,
-        error: 'Validation failed', 
-        details: errors 
-      });
-    }
-
-    if (error.code === 11000) {
-      return res.status(400).json({ 
-        success: false,
-        error: 'Transaction ID already exists' 
-      });
-    }
-
-    res.status(500).json({ 
-      success: false,
-      error: 'Internal server error' 
-    });
-  }
 }

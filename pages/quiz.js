@@ -688,18 +688,6 @@ const handleSubmit = async () => {
             {displayText}
           </span>
         </div>
-        <div className="flex items-center space-x-3 sm:space-x-6 flex-wrap justify-end">
-          <button
-            className="flex items-center space-x-1 sm:space-x-2 hover:text-yellow-400 transition-colors text-xs sm:text-sm px-2 py-1 rounded"
-          >
-            📄 <span className="hidden sm:inline">Question Paper</span><span className="sm:hidden">Paper</span>
-          </button>
-          <button
-            className="flex items-center space-x-1 sm:space-x-2 hover:text-yellow-400 transition-colors text-xs sm:text-sm px-2 py-1 rounded"
-          >
-            👁 <span className="hidden sm:inline">View Instructions</span><span className="sm:hidden">Instructions</span>
-          </button>
-        </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
@@ -824,25 +812,25 @@ const handleSubmit = async () => {
             <div className="p-3 sm:p-4 border-b border-gray-300">
               <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
                 <div className="flex items-center space-x-2">
-                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-gray-300 rounded text-center leading-5 sm:leading-6 font-semibold text-gray-700">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-gray-300 rounded-full text-center leading-5 sm:leading-6 font-semibold text-gray-700">
                     {stats.notVisited}
                   </div>
                   <span>Not Visited</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-red-500 text-white rounded text-center leading-5 sm:leading-6 font-semibold">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-red-500 text-white rounded-full text-center leading-5 sm:leading-6 font-semibold">
                     {stats.notAnswered}
                   </div>
                   <span>Not Answered</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-green-500 text-white rounded text-center leading-5 sm:leading-6 font-semibold">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-green-500 text-white rounded-full text-center leading-5 sm:leading-6 font-semibold">
                     {stats.answered}
                   </div>
                   <span>Answered</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-yellow-500 text-white rounded text-center leading-5 sm:leading-6 font-semibold">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-yellow-500 text-white rounded-full text-center leading-5 sm:leading-6 font-semibold">
                     {stats.review}
                   </div>
                   <span>Marked For Review</span>
@@ -850,7 +838,7 @@ const handleSubmit = async () => {
               </div>
               <div className="mt-2 text-xs sm:text-sm text-gray-500">
                 <div className="flex items-center space-x-2">
-                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-purple-500 text-white rounded text-center leading-5 sm:leading-6 font-semibold">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-purple-500 text-white rounded-full text-center leading-5 sm:leading-6 font-semibold">
                     {stats.answeredMarked}
                   </div>
                   <span>Answered & Marked</span>
@@ -872,7 +860,7 @@ const handleSubmit = async () => {
                     <button
                       key={i}
                       onClick={() => goToQuestion(i)}
-                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded text-xs sm:text-sm font-semibold transition-all flex items-center justify-center ${
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full text-xs sm:text-sm font-semibold transition-all flex items-center justify-center ${
                         i === index
                           ? 'bg-blue-500 text-white border-2 border-blue-700 scale-110'
                           : getQuestionStatusClass(i)

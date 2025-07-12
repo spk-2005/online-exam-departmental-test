@@ -39,11 +39,11 @@ export default function PaymentRedirect() {
                     Complete Your Payment
                 </h1>
                 <p className="text-lg text-gray-600 max-w-prose mx-auto mb-6">
-                    Scan the QR code or use the UPI ID below to make your payment.
+                     దయచేసి మీరు ఎంచుకున్న గ్రూప్‌కి సరిపోయే ఖచ్చితమైన మొత్తం చెల్లించండి.
                 </p>
                   {/* Price Information - Small Size Appearance */}
             <div className="mt-10 p-6 bg-gray-50 rounded-xl border border-gray-200 shadow-sm text-center">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">Group Pricing Information:</h3>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">గ్రూప్ ధర సమాచారం:</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm text-gray-700 max-w-2xl mx-auto">
                     <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">EOT GROUP: <span className="font-bold text-blue-700">₹50</span></p>
                     <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">GOT GROUP: <span className="font-bold text-blue-700">₹100</span></p>
@@ -67,7 +67,7 @@ export default function PaymentRedirect() {
                     <svg className="w-6 h-6 sm:w-7 sm:h-7 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Proceed to Payment Verification
+                    మీ పేమెంట్‌ని నిర్ధారించడానికి ఇక్కడ క్లిక్ చేయండి
                 </button>
             </div>
 

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import Login from "./login"; // Assuming this is your login form component
-import Leaderboard from "./Leaderboard"; // Your leaderboard component
+import Login from "./login";
+import Leaderboard from "./Leaderboard";
 import Link from "next/link";
-import PaymentRedirect from "./paymentredirect"; // Your payment component
+import PaymentRedirect from "./paymentredirect";
 import ContactUs from "./components/Contactus";
+import IssueReportingForm from "./IssueReportingForm";
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -45,123 +46,197 @@ export default function Home() {
       localStorage.removeItem("username");
       localStorage.removeItem("isAuthenticated");
       localStorage.removeItem("loginTime");
-      localStorage.removeItem("auth-token"); // Ensure token is cleared on logout
+      localStorage.removeItem("auth-token");
     }
   };
 
-  const handleLogout = async () => { // Changed to async to match Dashboard's logout
-    // Removed setIsLoggingOut, as it's not declared in Home.js
+  const handleLogout = async () => {
     clearAuthData();
     setIsAuthenticated(false);
     setUsername("");
-    // Optionally, redirect after local state clear
-    // router.push("/"); // Uncomment if you want to redirect immediately
   };
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <div className="text-center p-6 sm:p-8 bg-white rounded-2xl shadow-xl transform transition-transform duration-500 hover:scale-105">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto mb-5"></div>
-          <p className="text-xl sm:text-2xl font-semibold text-gray-700">Loading your dashboard...</p>
-          <p className="text-sm sm:text-base text-gray-500 mt-2">Please wait a moment.</p>
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4">
+        <div className="text-center p-6 sm:p-8 md:p-10 bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/20 max-w-md w-full">
+          <div className="relative mx-auto mb-6 w-16 h-16 sm:w-20 sm:h-20">
+            <div className="absolute inset-0 rounded-full border-4 border-blue-200 opacity-30"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+          </div>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">డాష్‌బోర్డ్ లోడ్ అవుతోంది (Loading Dashboard)</h2>
+          <p className="text-sm sm:text-base text-gray-600">మీ అనుభవాన్ని సిద్ధం చేసే వరకు దయచేసి వేచి ఉండండి (Please wait while we prepare your experience)</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-800 antialiased">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 font-sans text-gray-800">
       {/* Header for authenticated users */}
       {isAuthenticated && (
-        <header className="bg-gradient-to-r from-blue-700 to-blue-900 text-white shadow-xl py-4 sm:py-5 px-4">
-          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center text-center sm:text-left">
-            <div className="mb-3 sm:mb-0">
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white text-shadow-lg"> {/* Added text-shadow-lg */}
-                Welcome back, <span className="text-yellow-300 drop-shadow-md">{username}!</span>
-              </h1>
-              <p className="mt-1 text-blue-100 text-sm sm:text-base opacity-90 text-shadow-sm"> {/* Changed to text-blue-100, added text-shadow-sm */}
-                Ready to conquer your exams?
-              </p>
+       <header className="sticky top-0 z-50 bg-gradient-to-r from-blue-700 via-blue-800 to-blue-900 shadow-xl backdrop-blur-sm border-b border-blue-600/20">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-1">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="text-center sm:text-left">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">
+                    Welcome back, <span className="text-yellow-300 font-extrabold">{username}!</span>
+                </h1>
+                <p className="mt-1 text-blue-100 text-xs sm:text-sm opacity-90">
+                    మీ పరీక్షలను జయించడానికి సిద్ధంగా ఉన్నారా? 🚀 
+                </p>
             </div>
-            <div className="flex flex-col xs:flex-row items-center space-y-3 xs:space-y-0 xs:space-x-4 w-full sm:w-auto">
-              <Link href="/dashboard" className="w-full xs:w-auto px-5 py-2.5 bg-black text-white hover:bg-gray-800 transition-colors duration-300 rounded-lg text-base sm:text-lg font-medium shadow-md hover:shadow-lg transform hover:scale-105 text-center">
-  Dashboard
-</Link><button
-                onClick={handleLogout}
-                className="w-full xs:w-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 transition-colors duration-300 rounded-lg text-base sm:text-lg font-medium shadow-md hover:shadow-lg transform hover:scale-105 text-center"
-              >
-                Logout
-              </button>
+            <div className="flex flex-col xs:flex-row items-center gap-3 w-full sm:w-auto">
+                <Link href="/dashboard" className="w-full xs:w-auto group">
+                    <button className="w-full px-6 py-3 bg-white text-blue-800 hover:bg-gray-100 transition-all duration-300 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95">
+                        <span className="flex items-center justify-center gap-2">
+                            డాష్‌బోర్డ్ (Dashboard)
+                            <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </span>
+                    </button>
+                </Link>
+                {/* Note added next to the Dashboard button */}
+                <p className="text-white text-sm mt-2 sm:mt-0 max-w-xs text-center sm:text-left">
+                    పరీక్షలను రాసెందుకు dashboard button నొక్కండి
+                    <br />
+                    
+                </p>
+                <button
+                    onClick={handleLogout}
+                    className="w-full xs:w-auto px-6 py-3 bg-red-500 hover:bg-red-600 text-white transition-all duration-300 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
+                >
+                    లాగౌట్ (Logout)
+                </button>
             </div>
-          </div>
-        </header>
+        </div>
+    </div>
+</header>
       )}
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        {/* Sample Demo Quiz Link - Optimized for minimum space */}
-        <section className="mb-10 p-4 sm:p-5 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-2xl shadow-lg border border-purple-200 text-center flex flex-col sm:flex-row items-center justify-between gap-4 transform transition-transform duration-300 hover:scale-[1.01]">
-          <div className="flex-1 min-w-0"> {/* Flex-1 to take available space, min-w-0 for responsiveness */}
-            <h2 className="text-xl sm:text-2xl font-extrabold text-purple-800 mb-2 sm:mb-0">
-              🚀 Try Our Demo Quiz!
-            </h2>
-            <p className="text-sm sm:text-base text-purple-700 max-w-2xl mx-auto leading-relaxed hidden sm:block"> {/* Hidden on small screens */}
-              Experience our platform with a **free sample quiz**. No login required!
-            </p>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-3">
+        {/* Demo Quiz Banner - Modified for less space and added Telugu */}
+        <section className="mb-8 lg:mb-12 relative overflow-hidden">
+          {/* Reduced padding (p-4 sm:p-6 lg:p-8) from p-6 sm:p-8 lg:p-10 */}
+          <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 rounded-3xl p-4 sm:p-6 lg:p-8 shadow-2xl border border-purple-500/20">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/90 to-indigo-700/90 rounded-3xl"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full transform translate-x-16 -translate-y-16"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full transform -translate-x-12 translate-y-12"></div>
+            
+            <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-6">
+              <div className="text-center lg:text-left flex-1">
+                {/* Reduced heading size (text-xl sm:text-2xl lg:text-3xl) from text-2xl sm:text-3xl lg:text-4xl */}
+                <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-3">
+                  🚀 Try Our Demo Quiz!                </h2>
+                {/* Reduced paragraph size (text-sm sm:text-base) from sm:text-base lg:text-lg */}
+                <p className="text-purple-100 text-sm sm:text-base leading-relaxed">
+                  మా ప్లాట్‌ఫారమ్‌ను ఉచిత <strong className="text-yellow-300">నమూనా క్విజ్‌తో</strong> అనుభవించండి. లాగిన్ అవసరం లేదు! 
+                </p>
+              </div>
+              <Link href='/Samplequiz' passHref>
+                <button className="group bg-white text-purple-700 hover:bg-purple-50 px-6 sm:px-8 py-3 sm:py-4 rounded-2xl font-bold text-sm sm:text-base shadow-xl hover:shadow-2xl transform hover:scale-105 active:scale-95 transition-all duration-300">
+                  <span className="flex items-center gap-2">
+                    (Start Demo)
+                    <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                    </svg>
+                  </span>
+                </button>
+              </Link>
+            </div>
           </div>
-          <Link href='/Samplequiz' passHref>
-            <button className="flex-shrink-0 inline-flex items-center justify-center px-5 sm:px-6 py-2 sm:py-2.5 border border-transparent text-sm sm:text-base font-bold rounded-full shadow-md text-white bg-purple-600 hover:bg-purple-700 transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
-              Start Demo
-              <svg xmlns="http://www.w3.org/2000/svg" className="ml-2 h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10.293 15.707a1 1 0 010-1.414L14.586 10l-4.293-4.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                <path fillRule="evenodd" d="M4.293 15.707a1 1 0 010-1.414L8.586 10 4.293 5.707a1 1 0 011.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clipRule="evenodd" />
-              </svg>
-            </button>
-          </Link>
         </section>
 
-        {/* Grid for Login/Payment/Leaderboard */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-          {/* Login Section (only if not authenticated) */}
-          {!isAuthenticated && (
-            <div className="lg:col-span-2 bg-white rounded-3xl shadow-xl p-6 sm:p-8 border border-gray-200">
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-blue-800 mb-5 border-b pb-3 border-blue-200 flex items-center justify-center sm:justify-start">
-                🔒 Account Login
-              </h2>
-              <Login />
+        {/* Login Section (only if not authenticated) */}
+        {!isAuthenticated && (
+          <div className="mb-8 lg:mb-12 bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-6 sm:p-8 border border-white/20">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">ఖాతా లాగిన్ (Account Login)</h2>
             </div>
-          )}
+            {/* Note added before Login component */}
+            <div className="text-center bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl mb-6 shadow-sm">
+              <p className="text-sm font-medium">
+                login అవ్వాలంటే దయచేసి payment పూర్తి చేయండి. ఆ తర్వాత మా ప్లాట్‌ఫారమ్ ద్వారా మీకు username, password పంపించడం జరుగుతుంది.
+                <br />
+                (To log in, please complete the payment. After that, your username and password will be sent to you by our platform.)
+              </p>
+            </div>
+            <Login />
+          </div>
+        )}
 
-          {/* Payment Section */}
-          <div id="payment-section" className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 border border-blue-100">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-blue-700 mb-5 border-b pb-3 border-blue-200 flex items-center justify-center sm:justify-start">
-              💳 Payment & Verification
-            </h2>
+        {/* Vertical Layout - Payment, Leaderboard, Issues */}
+        <div className="space-y-6 sm:space-y-8">
+          {/* Payment Section - First */}
+          <div id="payment-section" className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-6 sm:p-8 border border-white/20">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                </svg>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">చెల్లింపు (Payment)</h2>
+            </div>
             <PaymentRedirect username={isAuthenticated ? username : ""} />
           </div>
 
-          {/* Leaderboard Section */}
-          <div id="leaderboard-section" className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 border border-green-100">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-green-700 mb-5 border-b pb-3 border-green-200 flex items-center justify-center sm:justify-start">
-              🏆 Leaderboard
-            </h2>
+          {/* Leaderboard Section - Second */}
+          <div id="leaderboard-section" className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-6 sm:p-8 border border-white/20">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                </svg>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">లీడర్‌బోర్డ్ (Leaderboard)</h2>
+            </div>
             <Leaderboard />
+          </div>
+
+          {/* Issue Reporting - Third */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-6 sm:p-8 border border-white/20">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                </svg>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">సమస్యలను నివేదించండి (Report Issues)</h2>
+            </div>
+            <IssueReportingForm />
           </div>
         </div>
 
-        {/* Note about payment (only if not authenticated) */}
+        {/* Payment Note (only if not authenticated) */}
         {!isAuthenticated && (
-          <div className="mt-10 p-5 sm:p-6 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-3xl border border-teal-200 shadow-xl transform transition-transform duration-300 hover:scale-[1.01]">
-            <p className="text-teal-800 text-sm sm:text-lg text-center leading-relaxed">
-              **Heads up:** You can submit payment details directly or <strong className="text-teal-900">log in</strong> to link them seamlessly to your account and track your progress!
-            </p>
+          <div className="mt-8 lg:mt-12 bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 rounded-3xl p-6 sm:p-8 shadow-xl border border-teal-200/50">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+              <p className="text-teal-800 text-sm sm:text-base lg:text-lg leading-relaxed max-w-3xl mx-auto">
+                <strong className="text-teal-900">త్వరిత చిట్కా (Quick Tip):</strong> మీరు చెల్లింపు వివరాలను నేరుగా సమర్పించవచ్చు, లేదా మీ ఖాతాకు సజావుగా లింక్ చేయడానికి మరియు మీ పురోగతిని ట్రాక్ చేయడానికి <strong className="text-teal-900">ముందుగా లాగిన్ చేయండి</strong>! (You can submit payment details directly, or <strong className="text-teal-900">log in first</strong> to seamlessly link them to your account and track your progress!)
+              </p>
+            </div>
           </div>
         )}
       </main>
-      <div className="mt-12"> {/* Added margin top to separate from main content */}
-        <ContactUs />
-      </div>
+
+      {/* Contact Section */}
+      <section className="bg-gradient-to-r from-gray-100 to-gray-200 mt-12 lg:mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <ContactUs />
+        </div>
+      </section>
     </div>
   );
 }
