@@ -13,6 +13,18 @@ export default function PaymentRedirect() {
         setShowPaymentForm(false);
     };
 
+    // Function to handle downloading the QR code
+    const handleDownloadQR = () => {
+        // Assuming the QR code image is located at '/scanner.jpg' in the public directory
+        const imageUrl = '/scanner.jpg'; 
+        const link = document.createElement('a');
+        link.href = imageUrl;
+        link.download = 'MrDeveloper_UPI_QR_Code.jpg'; // Name the downloaded file
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     if (showPaymentForm) {
         return (
             <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8 flex flex-col items-center">
@@ -82,7 +94,7 @@ export default function PaymentRedirect() {
                     </h2>
 
                     {/* QR Code Image */}
-                    <div className="bg-white p-4 rounded-lg shadow-xl mb-6 flex justify-center flex-shrink-0">
+                    <div className="bg-white p-4 rounded-lg shadow-xl mb-6 flex flex-col items-center flex-shrink-0">
                         {/* Ensure your /public/scanner.jpg exists */}
                         <img
                             src="/scanner.jpg"
@@ -91,7 +103,19 @@ export default function PaymentRedirect() {
                             height={250}
                             className="w-48 h-48 sm:w-60 sm:h-60 object-contain rounded-lg"
                         />
+
+                        {/* Download Button for the QR Code */}
+                        <button
+                            onClick={handleDownloadQR}
+                            className="mt-4 px-6 py-2 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition duration-300 flex items-center"
+                        >
+                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Download QR Code
+                        </button>
                     </div>
+                    
                     <p className="text-center text-md text-gray-600 mt-3 font-medium">
                         Scan this QR code with any UPI app to complete your payment.
                     </p>
