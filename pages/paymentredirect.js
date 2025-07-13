@@ -15,11 +15,10 @@ export default function PaymentRedirect() {
 
     // Function to handle downloading the QR code
     const handleDownloadQR = () => {
-        // Assuming the QR code image is located at '/scanner.jpg' in the public directory
         const imageUrl = '/scanner.jpg'; 
         const link = document.createElement('a');
         link.href = imageUrl;
-        link.download = 'MrDeveloper_UPI_QR_Code.jpg'; // Name the downloaded file
+        link.download = 'MrDeveloper_UPI_QR_Code.jpg';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -46,6 +45,30 @@ export default function PaymentRedirect() {
 
     return (
         <div className="max-w-4xl mx-auto my-8 p-6 sm:p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
+            
+            {/* Marquee with Blinking Payment Verification Button */}
+            <div className="overflow-hidden bg-gradient-to-r from-blue-50 to-white py-4 mb-8 border border-blue-200 rounded-lg shadow-inner relative">
+                <div className="absolute top-0 left-0 h-full w-full animate-marquee whitespace-nowrap flex items-center justify-center">
+                    
+                    {/* Replicated Button for Marquee */}
+                    <button
+                        onClick={handleProceedToForm}
+                        className="inline-flex items-center justify-center px-6 py-2 rounded-xl font-bold text-base sm:text-lg
+                            bg-gradient-to-r from-blue-600 to-blue-800 shadow-lg
+                            hover:from-blue-700 hover:to-blue-900 transform transition-all duration-300
+                            focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-offset-2"
+                    >
+                        {/* Blinking text with underline */}
+                        <span className="flex items-center underline animate-color-blink">
+                            <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            మీ పేమెంట్‌ని నిర్ధారించడానికి ఇక్కడ క్లిక్ చేయండి
+                        </span>
+                    </button>
+                </div>
+            </div>
+
             <div className="text-center mb-8">
                 <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">
                     Complete Your Payment
@@ -74,8 +97,8 @@ export default function PaymentRedirect() {
                         <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">EOT GROUP: <span className="font-bold text-blue-700">₹50</span></p>
                         <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">GOT GROUP: <span className="font-bold text-blue-700">₹100</span></p>
                         <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">EOT & GOT GROUP: <span className="font-bold text-blue-700">₹150</span></p>
-                        <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">CODE 8 & 10 GROUP: <span className="font-bold text-blue-700">₹100</span></p>
-                        <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">CODE 146 & 148 GROUP: <span className="font-bold text-blue-700">₹100</span></p>
+                        <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">CODE 8 & 10 GROUP: <span className="font-bold text-blue-700">₹50</span></p>
+                        <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">CODE 146 & 148 GROUP: <span className="font-bold text-blue-700">₹50</span></p>
                     </div>
                     <p className="text-xs text-gray-500 mt-4">
                         Please ensure you make the **exact payment** for your chosen group to avoid delays in activation.
@@ -149,22 +172,6 @@ export default function PaymentRedirect() {
                         </div>
                     </div>
                 </div>
-            </div>
-
-            {/* PROCEED TO PAYMENT VERIFICATION BUTTON */}
-            <div className="mt-16 text-center">
-                <button
-                    onClick={handleProceedToForm}
-                    className="inline-flex items-center justify-center px-10 py-4 rounded-xl font-bold text-lg sm:text-xl
-                        bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg
-                        hover:from-blue-700 hover:to-blue-900 transform hover:scale-105 transition-all duration-300
-                        focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-offset-2"
-                >
-                    <svg className="w-6 h-6 sm:w-7 sm:h-7 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    మీ పేమెంట్‌ని నిర్ధారించడానికి ఇక్కడ క్లిక్ చేయండి
-                </button>
             </div>
             
             <div className="text-sm text-gray-500 mt-6 text-center">
