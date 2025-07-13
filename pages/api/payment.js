@@ -157,7 +157,7 @@ export default async function handler(req, res) {
 
         // 5. Trigger the notification API route asynchronously.
         // (No change to notification logic)
-        fetch('https://departmental-tests.netlify.app/api/notify', {
+        fetch('/.netlify/functions/notify', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
