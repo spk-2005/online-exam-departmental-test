@@ -5,6 +5,7 @@ import Link from "next/link";
 import PaymentRedirect from "./paymentredirect";
 import ContactUs from "./components/Contactus";
 import IssueReportingForm from "./IssueReportingForm";
+import Footer from "./components/footer";
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -221,6 +222,7 @@ export default function Home() {
       <section className="bg-gradient-to-r from-gray-100 to-gray-200 mt-12 lg:mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
           <ContactUs />
+          <Footer/>
         </div>
       </section>
     </div>
