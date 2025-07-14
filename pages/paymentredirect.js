@@ -1,21 +1,14 @@
-// components/PaymentRedirect.js (or pages/paymentredirect.js)
-import { useState } from 'react';
+// components/PaymentRedirect.js
+import { useState, useRef, useEffect } from 'react';
 import PaymentForm from '@/pages/Paymentform'; // Ensure this path is correct
 
 export default function PaymentRedirect() {
-    const [showPaymentForm, setShowPaymentForm] = useState(false);
-
-    const handleProceedToForm = () => {
-        setShowPaymentForm(true);
-    };
-
-    const handleBackClick = () => {
-        setShowPaymentForm(false);
-    };
+    const [showPaymentFormMobile, setShowPaymentFormMobile] = useState(false);
+    const paymentFormRef = useRef(null); // Ref to scroll to the payment form
 
     // Function to handle downloading the QR code
     const handleDownloadQR = () => {
-        const imageUrl = '/scanner.jpg'; 
+        const imageUrl = '/scanner.jpg';
         const link = document.createElement('a');
         link.href = imageUrl;
         link.download = 'MrDeveloper_UPI_QR_Code.jpg';
@@ -24,42 +17,42 @@ export default function PaymentRedirect() {
         document.body.removeChild(link);
     };
 
-    if (showPaymentForm) {
-        return (
-            <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8 flex flex-col items-center">
-                <div className="w-full max-w-4xl mb-6">
-                    <button
-                        onClick={handleBackClick}
-                        className="inline-flex items-center px-4 py-2 text-blue-600 hover:text-blue-800 transition-all duration-200 text-base font-medium rounded-lg"
-                    >
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                        </svg>
-                        Back to Payment Info
-                    </button>
-                </div>
-                <PaymentForm />
-            </div>
-        );
-    }
+    // Handle proceeding to form for mobile
+    const handleProceedToFormMobile = () => {
+        setShowPaymentFormMobile(true);
+        // Scroll to the payment form after it's rendered
+        setTimeout(() => {
+            if (paymentFormRef.current) {
+                paymentFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 100); // Small delay to ensure render before scroll
+    };
+
+    // Handle back click for mobile
+    const handleBackClickMobile = () => {
+        setShowPaymentFormMobile(false);
+        // Optionally scroll back to the top of the payment info section
+        // (You might want to define another ref for this if desired)
+    };
 
     return (
         <div className="max-w-4xl mx-auto my-8 p-6 sm:p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
-            
-            {/* Marquee with Blinking Payment Verification Button */}
-            <div className="overflow-hidden bg-gradient-to-r from-blue-50 to-white py-4 mb-8 border border-blue-200 rounded-lg shadow-inner relative">
+
+            {/* Marquee with Blinking Payment Verification Button (Mobile Only) */}
+            {/* Added 'lg:hidden' to hide on large screens */}
+            <div className="lg:hidden overflow-hidden bg-gradient-to-r from-blue-50 to-white py-4 mb-8 border border-blue-200 rounded-lg shadow-inner relative">
                 <div className="absolute top-0 left-0 h-full w-full animate-marquee whitespace-nowrap flex items-center justify-center">
-                    
+
                     {/* Replicated Button for Marquee */}
                     <button
-                        onClick={handleProceedToForm}
+                        onClick={handleProceedToFormMobile}
                         className="inline-flex items-center justify-center px-6 py-2 rounded-xl font-bold text-base sm:text-lg
-                            bg-gradient-to-r from-blue-600 to-blue-800 shadow-lg
-                            hover:from-blue-700 hover:to-blue-900 transform transition-all duration-300
-                            focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-offset-2"
+                                bg-gradient-to-r from-blue-600 to-blue-800 shadow-lg
+                                hover:from-blue-700 hover:to-blue-900 transform transition-all duration-300
+                                focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-offset-2"
                     >
                         {/* Blinking text with underline */}
-                        <span className="flex items-center underline animate-color-blink">
+                        <span className="flex items-center underline animate-color-blink text-white">
                             <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -76,7 +69,7 @@ export default function PaymentRedirect() {
                 <p className="text-lg text-gray-600 max-w-prose mx-auto mb-6">
                     దయచేసి మీరు ఎంచుకున్న గ్రూప్‌కి సరిపోయే ఖచ్చితమైన మొత్తం చెల్లించండి.
                 </p>
-                
+
                 {/* Note about payment process */}
                 <div className="bg-yellow-50 p-4 rounded-xl border-l-4 border-yellow-500 text-gray-800 text-base mb-10 shadow-sm">
                     <p className="font-bold text-lg mb-2 text-yellow-800">
@@ -108,8 +101,9 @@ export default function PaymentRedirect() {
 
             <hr className="my-12 border-gray-200" />
 
-            {/* Main content grid: QR code and UPI ID section */}
-            <div className="grid grid-cols-1 justify-items-center">
+            {/* Main content grid: QR code and UPI ID section + Payment Form */}
+            {/* Added 'lg:grid-cols-2' for two columns on large screens */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 justify-items-center gap-8">
                 {/* Payment QR Code Section */}
                 <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-lg flex flex-col w-full max-w-lg">
                     <h2 className="text-2xl font-bold text-gray-800 mb-5 text-center">
@@ -138,7 +132,7 @@ export default function PaymentRedirect() {
                             Download QR Code
                         </button>
                     </div>
-                    
+
                     <p className="text-center text-md text-gray-600 mt-3 font-medium">
                         Scan this QR code with any UPI app to complete your payment.
                     </p>
@@ -172,8 +166,33 @@ export default function PaymentRedirect() {
                         </div>
                     </div>
                 </div>
+
+                {/* Payment Form Section */}
+                {/* On mobile, hidden initially, appears on button click. On large screens, always visible. */}
+                <div
+                    ref={paymentFormRef} // Attach ref here for scrolling
+                    className={`bg-white rounded-xl shadow-lg border border-gray-100 w-full max-w-md lg:max-w-none 
+                                ${showPaymentFormMobile ? 'block' : 'hidden'} 
+                                lg:block`}
+                >
+                    {/* Back button visible only on mobile when form is shown */}
+                    {showPaymentFormMobile && (
+                        <div className="w-full max-w-4xl pt-4 pl-4 lg:hidden">
+                            <button
+                                onClick={handleBackClickMobile}
+                                className="inline-flex items-center px-4 py-2 text-blue-600 hover:text-blue-800 transition-all duration-200 text-base font-medium rounded-lg"
+                            >
+                                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                Back to Payment Info
+                            </button>
+                        </div>
+                    )}
+                    <PaymentForm />
+                </div>
             </div>
-            
+
             <div className="text-sm text-gray-500 mt-6 text-center">
             </div>
         </div>

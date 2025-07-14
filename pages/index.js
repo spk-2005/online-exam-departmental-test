@@ -1,200 +1,230 @@
-// components/PaymentRedirect.js
-import { useState, useRef, useEffect } from 'react';
-import PaymentForm from '@/pages/Paymentform'; // Ensure this path is correct
+import { useEffect, useState } from "react";
+import Login from "./login";
+import Leaderboard from "./Leaderboard";
+import Link from "next/link";
+import PaymentRedirect from "./paymentredirect";
+import ContactUs from "./components/Contactus";
+import IssueReportingForm from "./IssueReportingForm";
+import Footer from "./components/footer";
 
-export default function PaymentRedirect() {
-    const [showPaymentFormMobile, setShowPaymentFormMobile] = useState(false);
-    const paymentFormRef = useRef(null); // Ref to scroll to the payment form
+export default function Home() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [username, setUsername] = useState("");
 
-    // Function to handle downloading the QR code
-    const handleDownloadQR = () => {
-        const imageUrl = '/scanner.jpg';
-        const link = document.createElement('a');
-        link.href = imageUrl;
-        link.download = 'MrDeveloper_UPI_QR_Code.jpg';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
+  useEffect(() => {
+    const checkAuth = () => {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          const storedUsername = localStorage.getItem("username");
+          const isAuth = localStorage.getItem("isAuthenticated");
+          const loginTime = localStorage.getItem("loginTime");
 
-    // Handle proceeding to form for mobile
-    const handleProceedToFormMobile = () => {
-        setShowPaymentFormMobile(true);
-        // Scroll to the payment form after it's rendered
-        setTimeout(() => {
-            if (paymentFormRef.current) {
-                paymentFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          if (storedUsername && isAuth === "true") {
+            const sessionDuration = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+            if (loginTime && Date.now() - parseInt(loginTime) > sessionDuration) {
+              clearAuthData(); // Session expired
+              setIsAuthenticated(false);
+            } else {
+              setIsAuthenticated(true);
+              setUsername(storedUsername);
             }
-        }, 100); // Small delay to ensure render before scroll
+          }
+        }
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    // Handle back click for mobile
-    const handleBackClickMobile = () => {
-        setShowPaymentFormMobile(false);
-        // Optionally scroll back to the top of the payment info section
-        // (You might want to define another ref for this if desired)
-    };
+    checkAuth();
+  }, []);
 
+  const clearAuthData = () => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem("username");
+      localStorage.removeItem("isAuthenticated");
+      localStorage.removeItem("loginTime");
+      localStorage.removeItem("auth-token");
+    }
+  };
+
+  const handleLogout = async () => {
+    clearAuthData();
+    setIsAuthenticated(false);
+    setUsername("");
+  };
+
+  if (isLoading) {
     return (
-        <div className="max-w-4xl mx-auto my-8 p-6 sm:p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4">
+        <div className="text-center p-6 sm:p-8 md:p-10 bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/20 max-w-md w-full">
+          <div className="relative mx-auto mb-6 w-16 h-16 sm:w-20 sm:h-20">
+            <div className="absolute inset-0 rounded-full border-4 border-blue-200 opacity-30"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+          </div>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">డాష్‌బోర్డ్ లోడ్ అవుతోంది (Loading Dashboard)</h2>
+          <p className="text-sm sm:text-base text-gray-600">మీ అనుభవాన్ని సిద్ధం చేసే వరకు దయచేసి వేచి ఉండండి (Please wait while we prepare your experience)</p>
+        </div>
+      </div>
+    );
+  }
 
-            {/* Marquee with Blinking Payment Verification Button (Mobile Only) */}
-            {/* Added 'lg:hidden' to hide on large screens */}
-            <div className="lg:hidden overflow-hidden bg-gradient-to-r from-blue-50 to-white py-4 mb-8 border border-blue-200 rounded-lg shadow-inner relative">
-                <div className="absolute top-0 left-0 h-full w-full animate-marquee whitespace-nowrap flex items-center justify-center">
-
-                    {/* Replicated Button for Marquee */}
-                    <button
-                        onClick={handleProceedToFormMobile}
-                        className="inline-flex items-center justify-center px-6 py-2 rounded-xl font-bold text-base sm:text-lg
-                                bg-gradient-to-r from-blue-600 to-blue-800 shadow-lg
-                                hover:from-blue-700 hover:to-blue-900 transform transition-all duration-300
-                                focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-offset-2"
-                    >
-                        {/* Blinking text with underline */}
-                        <span className="flex items-center underline animate-color-blink text-white">
-                            <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 font-sans text-gray-800">
+      {/* Header for authenticated users */}
+      {isAuthenticated && (
+       <header className="sticky top-0 z-50 bg-gradient-to-r from-blue-700 via-blue-800 to-blue-900 shadow-xl backdrop-blur-sm border-b border-blue-600/20">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-1">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="text-center sm:text-left">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">
+                    Welcome back, <span className="text-yellow-300 font-extrabold">{username}!</span>
+                </h1>
+                <p className="mt-1 text-blue-100 text-xs sm:text-sm opacity-90">
+                    మీ పరీక్షలను జయించడానికి సిద్ధంగా ఉన్నారా? 🚀 
+                </p>
+            </div>
+            <div className="flex flex-col xs:flex-row items-center gap-3 w-full sm:w-auto">
+                <Link href="/dashboard" className="w-full xs:w-auto group">
+                    <button className="w-full px-6 py-3 bg-white text-blue-800 hover:bg-gray-100 transition-all duration-300 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95">
+                        <span className="flex items-center justify-center gap-2">
+                            డాష్‌బోర్డ్ (Dashboard)
+                            <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
                             </svg>
-                            మీ పేమెంట్‌ని నిర్ధారించడానికి ఇక్కడ క్లిక్ చేయండి
                         </span>
                     </button>
-                </div>
-            </div>
-
-            <div className="text-center mb-8">
-                <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">
-                    Complete Your Payment
-                </h1>
-                <p className="text-lg text-gray-600 max-w-prose mx-auto mb-6">
-                    దయచేసి మీరు ఎంచుకున్న గ్రూప్‌కి సరిపోయే ఖచ్చితమైన మొత్తం చెల్లించండి.
+                </Link>
+                {/* Note added next to the Dashboard button */}
+                <p className="text-white text-sm mt-2 sm:mt-0 max-w-xs text-center sm:text-left">
+                    పరీక్షలను రాసెందుకు dashboard button నొక్కండి
+                    <br />
+                    
                 </p>
-
-                {/* Note about payment process */}
-                <div className="bg-yellow-50 p-4 rounded-xl border-l-4 border-yellow-500 text-gray-800 text-base mb-10 shadow-sm">
-                    <p className="font-bold text-lg mb-2 text-yellow-800">
-                        ముందుగా పేమెంట్ పూర్తి చేయండి:
-                    </p>
-                    <p className="font-medium">
-                        ముందుగా కింద ఉన్న స్కానర్ కానీ లేదా UPI ID ఉపయోగించి పేమెంట్ పూర్తి చేయండి. ఆ తర్వాత పేమెంట్ వెరిఫికేషన్ ఫారం ఫిల్ చేయండి.
-                    </p>
-                    <p className="text-sm mt-2 text-gray-600 italic">
-                        (First, complete the payment using the scanner or UPI ID below, and then fill out the payment verification form.)
-                    </p>
-                </div>
-
-                {/* Price Information - Small Size Appearance */}
-                <div className="mt-10 p-6 bg-gray-50 rounded-xl border border-gray-200 shadow-sm text-center">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">గ్రూప్ ధర సమాచారం:</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm text-gray-700 max-w-2xl mx-auto">
-                        <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">EOT GROUP: <span className="font-bold text-blue-700">₹50</span></p>
-                        <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">GOT GROUP: <span className="font-bold text-blue-700">₹100</span></p>
-                        <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">EOT & GOT GROUP: <span className="font-bold text-blue-700">₹150</span></p>
-                        <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">CODE 8 & 10 GROUP: <span className="font-bold text-blue-700">₹50</span></p>
-                        <p className="font-semibold py-1.5 px-3 bg-white rounded-md shadow-xs border border-gray-100 flex items-center justify-between">CODE 146 & 148 GROUP: <span className="font-bold text-blue-700">₹50</span></p>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-4">
-                        Please ensure you make the **exact payment** for your chosen group to avoid delays in activation.
-                    </p>
-                </div>
-            </div>
-
-            <hr className="my-12 border-gray-200" />
-
-            {/* Main content grid: QR code and UPI ID section + Payment Form */}
-            {/* Added 'lg:grid-cols-2' for two columns on large screens */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 justify-items-center gap-8">
-                {/* Payment QR Code Section */}
-                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-lg flex flex-col w-full max-w-lg">
-                    <h2 className="text-2xl font-bold text-gray-800 mb-5 text-center">
-                        Scan to Pay
-                    </h2>
-
-                    {/* QR Code Image */}
-                    <div className="bg-white p-4 rounded-lg shadow-xl mb-6 flex flex-col items-center flex-shrink-0">
-                        {/* Ensure your /public/scanner.jpg exists */}
-                        <img
-                            src="/scanner.jpg"
-                            alt="Scan to Pay QR Code"
-                            width={250}
-                            height={250}
-                            className="w-48 h-48 sm:w-60 sm:h-60 object-contain rounded-lg"
-                        />
-
-                        {/* Download Button for the QR Code */}
-                        <button
-                            onClick={handleDownloadQR}
-                            className="mt-4 px-6 py-2 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition duration-300 flex items-center"
-                        >
-                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                            Download QR Code
-                        </button>
-                    </div>
-
-                    <p className="text-center text-md text-gray-600 mt-3 font-medium">
-                        Scan this QR code with any UPI app to complete your payment.
-                    </p>
-
-                    {/* UPI ID */}
-                    <div className="bg-blue-100 p-5 rounded-lg border border-blue-200 mt-6 flex-grow">
-                        <h3 className="font-semibold text-blue-800 mb-3 text-lg">UPI ID:</h3>
-                        <div className="flex items-center justify-between bg-white p-3 rounded-md border border-gray-300 shadow-sm">
-                            <span className="font-mono text-base sm:text-lg text-gray-700 select-all break-all">8309179509@ptyes</span>
-                            <button
-                                onClick={() => {
-                                    navigator.clipboard.writeText('8309179509@ptyes');
-                                    alert('UPI ID copied to clipboard!');
-                                }}
-                                className="text-blue-600 hover:text-blue-800 text-sm sm:text-base font-medium transition-colors ml-4 py-1 px-3 rounded-md bg-blue-50 hover:bg-blue-100 whitespace-nowrap"
-                            >
-                                Copy
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Payment Apps */}
-                    <div className="mt-6">
-                        <p className="text-sm text-gray-600 mb-3 font-medium">Supported Payment Apps:</p>
-                        <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
-                            {['GPay', 'PhonePe', 'Paytm', 'BHIM', 'Amazon Pay', 'WhatsApp Pay'].map(app => (
-                                <div key={app} className="bg-white p-2.5 rounded-md shadow-sm border border-gray-200 transform hover:scale-105 transition-transform">
-                                    <span className="text-xs font-semibold text-gray-700">{app}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Payment Form Section */}
-                {/* On mobile, hidden initially, appears on button click. On large screens, always visible. */}
-                <div
-                    ref={paymentFormRef} // Attach ref here for scrolling
-                    className={`bg-white rounded-xl shadow-lg border border-gray-100 w-full max-w-md lg:max-w-none 
-                                ${showPaymentFormMobile ? 'block' : 'hidden'} 
-                                lg:block`}
+                <button
+                    onClick={handleLogout}
+                    className="w-full xs:w-auto px-6 py-3 bg-red-500 hover:bg-red-600 text-white transition-all duration-300 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
                 >
-                    {/* Back button visible only on mobile when form is shown */}
-                    {showPaymentFormMobile && (
-                        <div className="w-full max-w-4xl pt-4 pl-4 lg:hidden">
-                            <button
-                                onClick={handleBackClickMobile}
-                                className="inline-flex items-center px-4 py-2 text-blue-600 hover:text-blue-800 transition-all duration-200 text-base font-medium rounded-lg"
-                            >
-                                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                                </svg>
-                                Back to Payment Info
-                            </button>
-                        </div>
-                    )}
-                    <PaymentForm />
-                </div>
-            </div>
-
-            <div className="text-sm text-gray-500 mt-6 text-center">
+                    లాగౌట్ (Logout)
+                </button>
             </div>
         </div>
-    );
+    </div>
+</header>
+      )}
+
+      {/* Main Content Area */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-3">
+        {/* Demo Quiz Banner - Modified for less space and added Telugu */}
+        <section className="mb-8 lg:mb-12 relative overflow-hidden">
+          {/* Reduced padding (p-4 sm:p-6 lg:p-8) from p-6 sm:p-8 lg:p-10 */}
+          <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 rounded-3xl p-4 sm:p-6 lg:p-8 shadow-2xl border border-purple-500/20">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/90 to-indigo-700/90 rounded-3xl"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full transform translate-x-16 -translate-y-16"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full transform -translate-x-12 translate-y-12"></div>
+            
+            <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-6">
+              <div className="text-center lg:text-left flex-1">
+                {/* Reduced heading size (text-xl sm:text-2xl lg:text-3xl) from text-2xl sm:text-3xl lg:text-4xl */}
+                <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-3">
+                  🚀 Try Our Demo Quiz!                </h2>
+                {/* Reduced paragraph size (text-sm sm:text-base) from sm:text-base lg:text-lg */}
+                <p className="text-purple-100 text-sm sm:text-base leading-relaxed">
+                  మా ప్లాట్‌ఫారమ్‌ను ఉచిత <strong className="text-yellow-300">నమూనా క్విజ్‌తో</strong> అనుభవించండి. లాగిన్ అవసరం లేదు! 
+                </p>
+              </div>
+              <Link href='/Samplequiz' passHref>
+                <button className="group bg-white text-purple-700 hover:bg-purple-50 px-6 sm:px-8 py-3 sm:py-4 rounded-2xl font-bold text-sm sm:text-base shadow-xl hover:shadow-2xl transform hover:scale-105 active:scale-95 transition-all duration-300">
+                  <span className="flex items-center gap-2">
+                    (Start Demo)
+                    <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                    </svg>
+                  </span>
+                </button>
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Login Section (only if not authenticated) */}
+        {!isAuthenticated && (
+          <div className="mb-8 lg:mb-12 bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-6 sm:p-8 border border-white/20">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">ఖాతా లాగిన్ (Account Login)</h2>
+            </div>
+            {/* Note added before Login component */}
+            <div className="text-center bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl mb-6 shadow-sm">
+              <p className="text-sm font-medium">
+                login అవ్వాలంటే దయచేసి payment పూర్తి చేయండి. ఆ తర్వాత మా ప్లాట్‌ఫారమ్ ద్వారా మీకు username, password పంపించడం జరుగుతుంది.
+                <br />
+                (To log in, please complete the payment. After that, your username and password will be sent to you by our platform.)
+              </p>
+            </div>
+            <Login />
+          </div>
+        )}
+
+        {/* Vertical Layout - Payment, Leaderboard, Issues */}
+        <div className="space-y-6 sm:space-y-8">
+          {/* Payment Section - First */}
+          <div id="payment-section" className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-6 sm:p-8 border border-white/20">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                </svg>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">చెల్లింపు (Payment)</h2>
+            </div>
+            <PaymentRedirect username={isAuthenticated ? username : ""} />
+          </div>
+
+          {/* Leaderboard Section - Second */}
+          <div id="leaderboard-section" className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-6 sm:p-8 border border-white/20">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                </svg>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">లీడర్‌బోర్డ్ (Leaderboard)</h2>
+            </div>
+            <Leaderboard />
+          </div>
+
+          {/* Issue Reporting - Third */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-6 sm:p-8 border border-white/20">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                </svg>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">సమస్యలను నివేదించండి (Report Issues)</h2>
+            </div>
+            <IssueReportingForm />
+          </div>
+        </div>
+
+      
+      </main>
+
+      {/* Contact Section */}
+      <section className="bg-gradient-to-r from-gray-100 to-gray-200 mt-12 lg:mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <ContactUs />
+          <Footer/>
+        </div>
+      </section>
+    </div>
+  );
 }
