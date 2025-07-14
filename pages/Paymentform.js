@@ -15,13 +15,12 @@ export default function PaymentForm() {
         name: '',
         phoneNumber: '',
         selectedGroups: [],
-        screenshot: null
+        screenshot: null // This will hold the File object
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState({});
     const [successMessage, setSuccessMessage] = useState('');
-    // No previewUrl state needed
 
     const fileInputRef = useRef(null);
     const router = useRouter();
@@ -37,7 +36,7 @@ export default function PaymentForm() {
             [name]: cleanValue
         }));
 
-        // Clear error when user starts typing
+        // Clear error when user starts typing (if an error for this field exists)
         if (errors[name]) {
             setErrors(prev => ({
                 ...prev,
@@ -50,7 +49,7 @@ export default function PaymentForm() {
         const { value, checked } = e.target;
         const selectedGroupName = groups.find(group => group.id === parseInt(value))?.name;
 
-        if (!selectedGroupName) return;
+        if (!selectedGroupName) return; // Should not happen if group IDs are stable
 
         setFormData(prev => {
             const currentGroups = prev.selectedGroups;
@@ -62,7 +61,7 @@ export default function PaymentForm() {
                 newGroups = currentGroups.filter(name => name !== selectedGroupName);
             }
 
-            // Clear error when user selects at least one group
+            // Clear error for selectedGroups if at least one is selected
             if (newGroups.length > 0 && errors.selectedGroups) {
                 setErrors(prevErrors => ({ ...prevErrors, selectedGroups: '' }));
             }
@@ -77,32 +76,36 @@ export default function PaymentForm() {
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            // Enhanced file validation
+            // Enhanced client-side file validation
             const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
             if (!allowedTypes.includes(file.type)) {
                 setErrors(prev => ({ ...prev, screenshot: 'Please select a valid image file (PNG, JPG, JPEG, GIF)' }));
-                resetFileInput();
+                resetFileInput(); // Clear the file input
                 return;
             }
 
-            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+            const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit
+            if (file.size > MAX_SIZE_BYTES) {
                 setErrors(prev => ({ ...prev, screenshot: 'File size must be less than 5MB' }));
-                resetFileInput();
+                resetFileInput(); // Clear the file input
                 return;
             }
 
             setFormData(prev => ({
                 ...prev,
-                screenshot: file
+                screenshot: file // Store the actual File object here temporarily
             }));
 
-            setErrors(prev => ({ ...prev, screenshot: '' }));
+            setErrors(prev => ({ ...prev, screenshot: '' })); // Clear screenshot error
+        } else {
+            setFormData(prev => ({ ...prev, screenshot: null })); // If no file selected, clear it
+            setErrors(prev => ({ ...prev, screenshot: '' })); // Clear any existing error
         }
     };
 
     const resetFileInput = () => {
         if (fileInputRef.current) {
-            fileInputRef.current.value = '';
+            fileInputRef.current.value = ''; // Resets the input visually
         }
     };
 
@@ -110,8 +113,6 @@ export default function PaymentForm() {
         setFormData(prev => ({ ...prev, screenshot: null }));
         resetFileInput();
     };
-
-    // No useEffect for previewUrl cleanup needed
 
     const validateForm = () => {
         const newErrors = {};
@@ -142,62 +143,73 @@ export default function PaymentForm() {
             newErrors.screenshot = 'Payment screenshot is required';
         }
 
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+        setErrors(newErrors); // Update the errors state
+        return Object.keys(newErrors).length === 0; // Return true if no errors
+    };
+
+    // Helper function to convert File object to Base64 string
+    const convertFileToBase64 = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file); // Reads the file as a data URL (Base64)
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        // Run client-side validation
         if (!validateForm()) {
+            // Scroll to the first error message for better UX
             const firstErrorElement = document.querySelector('.text-red-600');
             if (firstErrorElement) {
                 firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-            return;
+            return; // Stop submission if validation fails
         }
 
         setIsSubmitting(true);
         setSuccessMessage('');
-        setErrors({});
+        setErrors({}); // Clear previous errors
 
         try {
-            const formDataToSend = new FormData();
-            formDataToSend.append('name', formData.name.trim());
-            formDataToSend.append('phoneNumber', formData.phoneNumber.trim());
-            formDataToSend.append('selectedGroups', JSON.stringify(formData.selectedGroups));
-            formDataToSend.append('screenshot', formData.screenshot);
+            // Convert the stored File object to Base64 string just before submission
+            const screenshotBase64 = formData.screenshot ? await convertFileToBase64(formData.screenshot) : null;
+            console.log('Frontend: Generated Base64 length:', screenshotBase64 ? screenshotBase64.length : 'N/A');
 
-            // Debug: Log the form data being sent
-            console.log('Form Data being sent:');
-            console.log('- Name:', formData.name.trim());
-            console.log('- Phone:', formData.phoneNumber.trim());
-            console.log('- Groups:', formData.selectedGroups);
-            console.log('- Screenshot:', formData.screenshot);
-            console.log('- Screenshot type:', formData.screenshot?.type);
-            console.log('- Screenshot size:', formData.screenshot?.size);
+            const payload = {
+                name: formData.name.trim(),
+                phoneNumber: formData.phoneNumber.trim(),
+                selectedGroups: formData.selectedGroups,
+                screenshot: screenshotBase64 // Send the Base64 string to the backend
+            };
+
+            console.log('Frontend: JSON Payload being sent (screenshot truncated for log):', {
+                ...payload,
+                screenshot: payload.screenshot ? payload.screenshot.substring(0, 100) + '...' : 'N/A'
+            });
 
             const response = await fetch('/api/payment', {
                 method: 'POST',
-                body: formDataToSend
+                headers: {
+                    'Content-Type': 'application/json', // IMPORTANT: This header is crucial for JSON body
+                },
+                body: JSON.stringify(payload) // Convert the JavaScript object to a JSON string
             });
 
-            // Debug: Log response details
-            console.log('Response status:', response.status);
-            console.log('Response ok:', response.ok);
-
-            const data = await response.json();
-            console.log('Response data:', data);
+            console.log('Frontend: Response status from API:', response.status);
+            const data = await response.json(); // Always try to parse JSON response
+            console.log('Frontend: Response data from API:', data);
 
             if (response.ok) {
                 setSuccessMessage(
                     'Payment details submitted successfully! We will activate your account within 1 hour. If not, please contact us.'
                 );
-
-                // Reset form
+                // Reset form fields upon successful submission
                 setFormData({ name: '', phoneNumber: '', selectedGroups: [], screenshot: null });
-                resetFileInput();
-
+                resetFileInput(); // Clear the file input visually
                 // Scroll to success message
                 setTimeout(() => {
                     const successElement = document.querySelector('.bg-green-100');
@@ -206,192 +218,59 @@ export default function PaymentForm() {
                     }
                 }, 100);
             } else {
-                // Enhanced error handling for different error types
-                console.error('API Error Response:', data);
-
-                // Handle different error types from API
-                if (data.error === 'Duplicate entry' || data.error === 'Phone number already exists') {
-                    // Handle duplicate phone number error
+                console.error('Frontend: API Error Response from server:', data);
+                // Handle different types of errors returned from the backend
+                if (data.error === 'Duplicate entry') {
                     setErrors({
                         phoneNumber: data.message || 'This phone number is already registered. Please use a different phone number.'
                     });
-
-                    // Scroll to phone number field
-                    setTimeout(() => {
+                    setTimeout(() => { // Scroll to phone number field
                         const phoneField = document.getElementById('phoneNumber');
                         if (phoneField) {
                             phoneField.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             phoneField.focus();
                         }
                     }, 100);
-
-                } else if (data.error === 'Validation failed' && data.details) {
-                    // Handle validation errors with details array
-                    const apiErrors = {};
-                    data.details.forEach(error => {
-                        const errorLower = error.toLowerCase();
-                        if (errorLower.includes('name')) {
-                            apiErrors.name = error;
-                        } else if (errorLower.includes('phone')) {
-                            apiErrors.phoneNumber = error;
-                        } else if (errorLower.includes('group')) {
-                            apiErrors.selectedGroups = error;
-                        } else if (errorLower.includes('screenshot') || errorLower.includes('image') || errorLower.includes('file')) {
-                            apiErrors.screenshot = error;
-                        } else {
-                            apiErrors.general = error;
-                        }
-                    });
-                    setErrors(apiErrors);
-
-                    // Scroll to first error
-                    setTimeout(() => {
-                        const firstErrorElement = document.querySelector('.text-red-600');
-                        if (firstErrorElement) {
-                            firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                    }, 100);
-
-                } else if (data.error === 'File too large') {
-                    // Handle file size error
-                    setErrors({
-                        screenshot: data.message || 'File size must be less than 5MB'
-                    });
-
-                } else if (data.error === 'Invalid file') {
-                    // Handle invalid file type error
-                    setErrors({
-                        screenshot: data.message || 'Only image files are allowed'
-                    });
-
-                } else {
-                    // Handle general errors
-                    setErrors({
-                        general: data.message || data.error || 'An unexpected error occurred. Please try again.'
-                    });
-                }
-            }
-        } catch (error) {
-            console.error('Error submitting payment:', error);
-            console.error('Error details:', {
-                name: error.name,
-                message: error.message,
-                stack: error.stack
-            });
-
-            // Handle network errors
-            if (error.name === 'TypeError' && error.message.includes('fetch')) {
-                setErrors({
-                    general: 'Network error: Unable to connect to server. Please check your internet connection and try again.'
-                });
-            } else {
-                setErrors({
-                    general: 'Network error or server unreachable. Please check your connection and try again.'
-                });
-            }
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-
-    // Alternative approach using JSON instead of FormData (for testing)
-    const handleSubmitAlternative = async (e) => {
-        e.preventDefault();
-
-        if (!validateForm()) {
-            const firstErrorElement = document.querySelector('.text-red-600');
-            if (firstErrorElement) {
-                firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-            return;
-        }
-
-        setIsSubmitting(true);
-        setSuccessMessage('');
-        setErrors({});
-
-        try {
-            // Convert image to base64 for JSON submission
-            const convertFileToBase64 = (file) => {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(file);
-                    reader.onload = () => resolve(reader.result);
-                    reader.onerror = error => reject(error);
-                });
-            };
-
-            const screenshotBase64 = formData.screenshot ? await convertFileToBase64(formData.screenshot) : null;
-
-
-            const payload = {
-                name: formData.name.trim(),
-                phoneNumber: formData.phoneNumber.trim(),
-                selectedGroups: formData.selectedGroups,
-                screenshot: screenshotBase64 ? {
-                    data: screenshotBase64,
-                    type: formData.screenshot.type,
-                    size: formData.screenshot.size,
-                    name: formData.screenshot.name
-                } : null
-            };
-
-            console.log('JSON Payload:', payload);
-
-            const response = await fetch('/api/payment', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload)
-            });
-
-            console.log('Response status:', response.status);
-            const data = await response.json();
-            console.log('Response data:', data);
-
-            if (response.ok) {
-                setSuccessMessage(
-                    'Payment details submitted successfully! We will activate your account within 1 hour. If not, please contact us.'
-                );
-
-                setFormData({ name: '', phoneNumber: '', selectedGroups: [], screenshot: null });
-                resetFileInput();
-
-                setTimeout(() => {
-                    const successElement = document.querySelector('.bg-green-100');
-                    if (successElement) {
-                        successElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                }, 100);
-            } else {
-                console.error('API Error Response:', data);
-
-                if (data.details) {
+                } else if (data.details && Array.isArray(data.details)) {
+                    // Map backend validation errors to frontend error state
                     const apiErrors = {};
                     data.details.forEach(error => {
                         const errorLower = error.toLowerCase();
                         if (errorLower.includes('name')) apiErrors.name = error;
                         else if (errorLower.includes('phone')) apiErrors.phoneNumber = error;
                         else if (errorLower.includes('group')) apiErrors.selectedGroups = error;
-                        else if (errorLower.includes('screenshot')) apiErrors.screenshot = error;
-                        else apiErrors.general = error;
+                        else if (errorLower.includes('screenshot') || errorLower.includes('image') || errorLower.includes('file')) apiErrors.screenshot = error;
+                        else apiErrors.general = error; // Catch any other general errors
                     });
                     setErrors(apiErrors);
+                    setTimeout(() => { // Scroll to the first error message
+                        const firstErrorElement = document.querySelector('.text-red-600');
+                        if (firstErrorElement) {
+                            firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }, 100);
                 } else {
-                    setErrors({ general: data.error || data.message || 'An unexpected error occurred. Please try again.' });
+                    // General error message if no specific details are provided
+                    setErrors({ general: data.message || data.error || 'An unexpected error occurred. Please try again.' });
                 }
             }
         } catch (error) {
-            console.error('Error submitting payment:', error);
-            setErrors({
-                general: 'Network error or server unreachable. Please check your connection and try again.'
-            });
+            console.error('Frontend: Error submitting payment request:', error);
+            // Catch network errors or unexpected client-side errors
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                setErrors({
+                    general: 'Network error: Unable to connect to server. Please check your internet connection and try again.'
+                });
+            } else {
+                setErrors({
+                    general: 'An unexpected error occurred. Please try again later.'
+                });
+            }
         } finally {
-            setIsSubmitting(false);
+            setIsSubmitting(false); // Re-enable the submit button
         }
     };
+
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center py-4 px-2 sm:px-4 lg:px-8">
@@ -516,7 +395,7 @@ export default function PaymentForm() {
                             {formData.screenshot ? (
                                 <div className="flex items-center justify-between w-full px-2 py-1">
                                     <span className="text-sm text-gray-800 truncate mr-2">
-                                        {formData.screenshot.name}
+                                        {formData.screenshot.name} {/* Displaying file name */}
                                     </span>
                                     <button
                                         type="button"

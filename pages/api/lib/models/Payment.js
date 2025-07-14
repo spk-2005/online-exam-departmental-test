@@ -1,177 +1,56 @@
-  // pages/api/lib/models/Payment.js
-  import mongoose from 'mongoose';
+// pages/api/lib/models/Payment.js
+import mongoose from 'mongoose';
 
-  const { Schema } = mongoose;
-
-  const PaymentSchema = new Schema({
+const PaymentSchema = new mongoose.Schema({
     name: {
-      type: String,
-      required: [true, 'Name is required'],
-      trim: true,
-      minlength: [2, 'Name must be at least 2 characters long'],
-      maxlength: [50, 'Name must be less than 50 characters'],
-      validate: {
-        validator: function(name) {
-          return /^[a-zA-Z\s]+$/.test(name);
-        },
-        message: 'Name can only contain letters and spaces'
-      }
+        type: String,
+        required: [true, 'Name is required'],
+        trim: true,
+        minlength: [2, 'Name must be at least 2 characters long'],
+        maxlength: [50, 'Name must be less than 50 characters']
     },
     phoneNumber: {
-      type: String,
-      required: [true, 'Phone number is required'],
-      unique:true,
-      trim: true,
-      validate: {
-        validator: function(phone) {
-          return /^\d{10,15}$/.test(phone);
-        },
-        message: 'Phone number must be between 10-15 digits'
-      }
+        type: String,
+        required: [true, 'Phone number is required'],
+        trim: true,
+        // You might have a unique index on this in MongoDB, but Mongoose unique:true is also good.
+        unique: true, // Crucial for preventing duplicates
+        validate: {
+            validator: function(v) {
+                return /^\d{10,15}$/.test(v);
+            },
+            message: 'Phone number must be between 10-15 digits'
+        }
     },
     selectedGroups: {
-      type: [String],
-      required: [true, 'Groups are required'],
-      validate: {
-        validator: function(groups) {
-          const validGroups = [
-            'EOT GROUP', 
-            'GOT GROUP', 
-            'EOT & GOT GROUP', 
-            'CODE 8 & 10 GROUP', 
-            'CODE 146 & 148 GROUP'
-          ];
-          return groups.length > 0 && groups.every(group => validGroups.includes(group));
-        },
-        message: 'Please select valid test groups'
-      }
+        type: [String], // Array of strings
+        required: [true, 'Please select at least one test group'],
+        validate: {
+            validator: function(arr) {
+                return arr && arr.length > 0;
+            },
+            message: 'Please select at least one test group'
+        }
     },
     screenshot: {
-      type: String,
-      required: [true, 'Screenshot is required'],
-      validate: {
-        validator: function(screenshot) {
-          return screenshot.startsWith('/uploads/') && /\.(jpg|jpeg|png|gif)$/i.test(screenshot);
-        },
-        message: 'Screenshot must be a valid image file'
-      }
+        type: String, // Ensure it's String
+        required: [true, 'Payment screenshot (Base64) is required'],
+        // REMOVE any custom 'validate' function here that checks for image validity.
+        // That validation is already robustly handled in your API route (payment.js)
+        // right before attempting to save to the database.
+        // Mongoose validation will then only check if it's a string and required.
     },
     status: {
-      type: String,
-      enum: {
-        values: ['pending', 'verified', 'rejected'],
-        message: 'Status must be pending, verified, or rejected'
-      },
-      default: 'pending',
-    },
-    adminNotes: {
-      type: String,
-      maxlength: [500, 'Admin notes must be less than 500 characters'],
-      default: ''
-    },
-    verifiedAt: {
-      type: Date,
-      default: null
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: 'pending'
     }
-  }, {
-    timestamps: true // This will automatically handle createdAt and updatedAt
-  });
+}, {
+    timestamps: true // Adds createdAt and updatedAt fields
+});
 
-  // Index for better query performance
-  PaymentSchema.index({ phoneNumber: 1 });
-  PaymentSchema.index({ status: 1 });
-  PaymentSchema.index({ createdAt: -1 });
+// You might also want to explicitly create a unique index for phoneNumber
+// on the schema level, if you haven't done it with unique: true directly.
+// PaymentSchema.index({ phoneNumber: 1 }, { unique: true });
 
-  // Pre-save middleware to update the updatedAt field
-  PaymentSchema.pre('save', function(next) {
-    this.updatedAt = new Date();
-    next();
-  });
-
-  // Pre-update middleware to update the updatedAt field
-  PaymentSchema.pre(['updateOne', 'findOneAndUpdate'], function(next) {
-    this.set({ updatedAt: new Date() });
-    next();
-  });
-
-  // Instance method to mark as verified
-  PaymentSchema.methods.markAsVerified = function(adminNotes = '') {
-    this.status = 'verified';
-    this.verifiedAt = new Date();
-    this.adminNotes = adminNotes;
-    return this.save();
-  };
-
-  // Instance method to mark as rejected
-  PaymentSchema.methods.markAsRejected = function(adminNotes = '') {
-    this.status = 'rejected';
-    this.adminNotes = adminNotes;
-    return this.save();
-  };
-
-  // Static method to find by phone number
-  PaymentSchema.statics.findByPhoneNumber = function(phoneNumber) {
-    return this.findOne({ phoneNumber: phoneNumber.trim() });
-  };
-
-  // Static method to get pending payments
-  PaymentSchema.statics.getPendingPayments = function() {
-    return this.find({ status: 'pending' }).sort({ createdAt: -1 });
-  };
-
-  // Static method to get statistics
-  PaymentSchema.statics.getStats = function() {
-    return this.aggregate([
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 }
-        }
-      }
-    ]);
-  };
-
-  // Virtual for formatted created date
-  PaymentSchema.virtual('formattedCreatedAt').get(function() {
-    return this.createdAt.toLocaleString('en-IN', { 
-      timeZone: 'Asia/Kolkata',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  });
-
-  // Virtual for formatted updated date
-  PaymentSchema.virtual('formattedUpdatedAt').get(function() {
-    return this.updatedAt.toLocaleString('en-IN', { 
-      timeZone: 'Asia/Kolkata',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  });
-
-  // Ensure virtual fields are serialized
-  PaymentSchema.set('toJSON', {
-    virtuals: true,
-    transform: function(doc, ret) {
-      delete ret.__v;
-      return ret;
-    }
-  });
-
-  const Payment = mongoose.models.Payment || mongoose.model('Payment', PaymentSchema);
-
-  export default Payment;
+export default mongoose.models.Payment || mongoose.model('Payment', PaymentSchema);
