@@ -1,211 +1,284 @@
 // pages/api/payment.js
-import connectMongo from '@/pages/api/lib/mongodb';
-import Payment from '@/pages/api/lib/models/Payment';
-import multer from 'multer';
+import formidable from 'formidable';
+import fs from 'fs';
 import path from 'path';
-import { promises as fs } from 'fs';
-
-// --- Multer Configuration (No Change) ---
-
-// Ensure the uploads directory exists
-const uploadDir = path.join(process.cwd(), 'public/uploads');
-
-// Helper function to ensure directory exists
-async function ensureUploadDir() {
-    try {
-        await fs.access(uploadDir);
-    } catch (error) {
-        if (error.code === 'ENOENT') {
-            await fs.mkdir(uploadDir, { recursive: true });
-            console.log('Created uploads directory.');
-        } else {
-            throw error;
-        }
-    }
-}
-
-// Multer disk storage configuration
-const storage = multer.diskStorage({
-    destination: async (req, file, cb) => {
-        await ensureUploadDir();
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const fileExtension = path.extname(file.originalname);
-        cb(null, `${file.fieldname}-${uniqueSuffix}${fileExtension}`);
-    },
-});
-
-const upload = multer({ storage });
-
-// --- Middleware Helper (No Change) ---
-
-function runMiddleware(req, res, fn) {
-    return new Promise((resolve, reject) => {
-        fn(req, res, (result) => {
-            if (result instanceof Error) {
-                return reject(result);
-            }
-            return resolve(result);
-        });
-    });
-}
-
-// --- Next.js Config (No Change) ---
+import Payment from '@/pages/api/lib/models/Payment.js'
+import connectMongo from '@/pages/api/lib/mongodb';
 
 export const config = {
     api: {
-        bodyParser: false, // Disable Next.js body parser to allow Multer to handle it
+        bodyParser: false,
     },
 };
 
-// --- API Handler (Modified to use findOneAndUpdate with upsert) ---
-
 export default async function handler(req, res) {
-    if (req.method !== 'POST') {
-        return res.status(405).json({ success: false, error: 'Method not allowed' });
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
     }
 
-    // Variable to store the path of the uploaded file if needed for cleanup
-    let uploadedFilePath = null;
+    if (req.method !== 'POST') {
+        return res.status(405).json({ 
+            error: 'Method not allowed',
+            message: 'Only POST requests are allowed' 
+        });
+    }
+
+    let form;
+    let fields = {};
+    let files = {};
 
     try {
-        // 1. Connect to MongoDB
+        // Connect to MongoDB first
         await connectMongo();
-        console.log('MongoDB connected successfully.');
+        console.log('Connected to MongoDB successfully');
 
-        // 2. Process file upload using Multer middleware
-        await runMiddleware(req, res, upload.single('screenshot'));
-
-        // Store the uploaded file path for potential cleanup later if an error occurs
-        if (req.file) {
-            uploadedFilePath = req.file.path;
+        // Create upload directory
+        const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+            console.log('Created upload directory:', uploadDir);
         }
 
-        // 3. Extract data from the body and validate
-        const { name, phoneNumber, selectedGroups } = req.body;
-        
-        let parsedSelectedGroups;
-        try {
-            parsedSelectedGroups = JSON.parse(selectedGroups);
-            
-            // VALIDATION: Check if it is an array, has content, AND every item is a valid string.
-            if (!Array.isArray(parsedSelectedGroups) || parsedSelectedGroups.length === 0 || 
-                !parsedSelectedGroups.every(group => typeof group === 'string' && group.trim() !== '')) {
-                throw new Error('Invalid format or missing groups for selectedGroups');
+        // Configure formidable
+        form = formidable({
+            uploadDir: uploadDir,
+            keepExtensions: true,
+            maxFileSize: 5 * 1024 * 1024, // 5MB
+            filename: (name, ext, part) => {
+                return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}${ext}`;
+            },
+            filter: ({ mimetype }) => {
+                return mimetype && mimetype.startsWith('image/');
             }
-        } catch (e) {
-            console.error("Invalid group data format:", e.message);
-            // Delete the uploaded file if validation fails after upload
-            if (uploadedFilePath) {
-                await fs.unlink(uploadedFilePath).catch(err => console.error("Failed to delete temp file:", err));
+        });
+
+        // Parse form data
+        [fields, files] = await form.parse(req);
+        console.log('Form parsed successfully');
+        console.log('Fields:', fields);
+        console.log('Files:', Object.keys(files));
+
+        // Extract and validate data
+        const name = Array.isArray(fields.name) ? fields.name[0] : fields.name;
+        const phoneNumber = Array.isArray(fields.phoneNumber) ? fields.phoneNumber[0] : fields.phoneNumber;
+        const selectedGroups = Array.isArray(fields.selectedGroups) ? fields.selectedGroups[0] : fields.selectedGroups;
+        const screenshot = Array.isArray(files.screenshot) ? files.screenshot[0] : files.screenshot;
+
+        console.log('Extracted data:', {
+            name,
+            phoneNumber,
+            selectedGroups,
+            screenshot: screenshot ? screenshot.originalFilename : 'No file'
+        });
+
+        // Validation
+        const errors = [];
+
+        if (!name || !name.trim()) {
+            errors.push('Name is required');
+        } else if (name.trim().length < 2) {
+            errors.push('Name must be at least 2 characters long');
+        } else if (name.trim().length > 50) {
+            errors.push('Name must be less than 50 characters');
+        }
+
+        if (!phoneNumber || !phoneNumber.trim()) {
+            errors.push('Phone number is required');
+        } else if (!/^\d{10,15}$/.test(phoneNumber.trim())) {
+            errors.push('Phone number must be between 10-15 digits');
+        }
+
+        if (!selectedGroups) {
+            errors.push('Selected groups are required');
+        } else {
+            try {
+                const parsedGroups = JSON.parse(selectedGroups);
+                if (!Array.isArray(parsedGroups) || parsedGroups.length === 0) {
+                    errors.push('Please select at least one test group');
+                }
+            } catch (e) {
+                errors.push('Invalid group selection format');
             }
-            return res.status(400).json({ 
-                success: false,
-                error: 'Invalid or missing group selection format',
-                details: ['Please select a valid test group.']
+        }
+
+        if (!screenshot) {
+            errors.push('Payment screenshot is required');
+        } else {
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+            if (!allowedTypes.includes(screenshot.mimetype)) {
+                errors.push('Please select a valid image file (PNG, JPG, JPEG, GIF)');
+            }
+
+            if (screenshot.size > 5 * 1024 * 1024) {
+                errors.push('File size must be less than 5MB');
+            }
+        }
+
+        if (errors.length > 0) {
+            // Clean up uploaded file if validation fails
+            if (screenshot && screenshot.filepath) {
+                try {
+                    fs.unlinkSync(screenshot.filepath);
+                    console.log('Cleaned up file due to validation errors');
+                } catch (cleanupError) {
+                    console.error('Error cleaning up file:', cleanupError);
+                }
+            }
+
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: errors
             });
         }
-        
-        if (!name || !phoneNumber || !uploadedFilePath) {
-            if (uploadedFilePath) {
-                await fs.unlink(uploadedFilePath).catch(err => console.error("Failed to delete temp file:", err));
-            }
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Missing required fields or screenshot.',
-            });
-        }
 
-        // Basic phone number validation
-        const phoneRegex = /^\d{10,15}$/;
-        if (!phoneRegex.test(phoneNumber)) {
-            if (uploadedFilePath) {
-                await fs.unlink(uploadedFilePath).catch(err => console.error("Failed to delete temp file:", err));
-            }
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Invalid phone number format.',
-                details: ['Phone number must be 10-15 digits.']
-            });
-        }
+        const parsedGroups = JSON.parse(selectedGroups);
+        const fileName = path.basename(screenshot.filepath);
+        const publicPath = `/uploads/${fileName}`;
 
-        // 4. Implement Upsert Logic: Find by phoneNumber and update or create
-        const paymentData = {
+        console.log('Creating payment record...');
+
+        // Create new payment record
+        const newPayment = new Payment({
             name: name.trim(),
             phoneNumber: phoneNumber.trim(),
-            // Store the public path to the saved file
-            screenshot: `/uploads/${path.basename(uploadedFilePath)}`, 
-            selectedGroups: parsedSelectedGroups,
-            // We ensure we update the updatedAt field on every submission
-            updatedAt: new Date()
-        };
-        
-        // Find a payment record by phoneNumber. If found, update it. If not, create it.
-        const savedPayment = await Payment.findOneAndUpdate(
-            { phoneNumber: paymentData.phoneNumber }, // Filter: Find by phone number
-            paymentData, // Data to update/insert
-            { 
-                new: true, // Return the updated document
-                upsert: true, // Create if it doesn't exist (UPSERT)
-                setDefaultsOnInsert: true // Applies schema defaults if inserting
-            }
-        );
+            selectedGroups: parsedGroups,
+            screenshot: publicPath,
+            status: 'pending'
+        });
 
-        console.log('Payment record processed (Upserted). ID:', savedPayment._id);
+        const savedPayment = await newPayment.save();
+        console.log('Payment saved to database:', savedPayment._id);
 
-        // 5. Trigger the notification API route asynchronously.
-        // (No change to notification logic)
-        fetch('/.netlify/functions/notify', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
+        // Send notification after successful database save
+        try {
+            console.log('Sending notification...');
+            
+            const notificationPayload = {
                 name: savedPayment.name,
                 phoneNumber: savedPayment.phoneNumber,
                 selectedGroups: savedPayment.selectedGroups,
-                screenshot: savedPayment.screenshot
-            }),
-        })
-        .catch(notificationError => {
-            console.error('Error during asynchronous notification API call:', notificationError.message);
-        });
+                screenshot: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://departmental-tests.netlify.app/'}${publicPath}`,
+                isUpdate: false
+            };
 
-        // 6. Send success response to the client immediately
-        res.status(201).json({
+            console.log('Notification payload:', notificationPayload);
+
+            // Call Netlify function or your notification service
+            const notificationResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://departmental-tests.netlify.app/'}/.netlify/functions/notify`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(notificationPayload)
+            });
+
+            const notificationResult = await notificationResponse.json();
+            console.log('Notification response:', notificationResult);
+
+            if (!notificationResponse.ok) {
+                console.error('Notification failed:', notificationResult);
+                // Don't fail the main request if notification fails
+            }
+
+        } catch (notificationError) {
+            console.error('Notification error:', notificationError);
+            // Don't fail the main request if notification fails
+        }
+
+        // Return success response
+        res.status(200).json({
             success: true,
-            message: 'Payment details saved/updated successfully. Notification triggered asynchronously.',
+            message: 'Payment details submitted successfully',
             data: {
                 id: savedPayment._id,
                 name: savedPayment.name,
                 phoneNumber: savedPayment.phoneNumber,
                 selectedGroups: savedPayment.selectedGroups,
-                screenshot: savedPayment.screenshot,
-                createdAt: savedPayment.createdAt,
-                updatedAt: savedPayment.updatedAt
+                status: savedPayment.status,
+                submittedAt: savedPayment.createdAt
             }
         });
 
     } catch (error) {
-        // General error handling
-        console.error('Server Error during payment processing:', error);
+        console.error('API Error:', error);
         
-        // If an error occurred and a file was uploaded, try to delete the file
-        if (uploadedFilePath) {
-            await fs.unlink(uploadedFilePath).catch(err => console.error("Failed to delete uploaded file during error handling:", err));
-        }
-
-        // Send a specific error code if we detect a database duplicate key error (code 11000)
-        // Although upsert should prevent most duplicate key errors based on phoneNumber, 
-        // this is good practice for general database errors.
+        // Handle MongoDB duplicate key error (11000)
         if (error.code === 11000) {
-            return res.status(409).json({ success: false, error: 'A record with this phone number already exists.' });
+            // Clean up uploaded file on duplicate error
+            if (files.screenshot) {
+                const screenshot = Array.isArray(files.screenshot) ? files.screenshot[0] : files.screenshot;
+                if (screenshot && screenshot.filepath) {
+                    try {
+                        fs.unlinkSync(screenshot.filepath);
+                        console.log('Cleaned up file due to duplicate error');
+                    } catch (cleanupError) {
+                        console.error('Error cleaning up file:', cleanupError);
+                    }
+                }
+            }
+            
+            return res.status(400).json({
+                error: 'Duplicate entry',
+                message: 'This phone number is already registered. Please use a different phone number or contact support.'
+            });
         }
 
-        if (!res.headersSent) {
-            res.status(500).json({ success: false, error: 'Internal Server Error.' });
+        // Handle validation errors
+        if (error.name === 'ValidationError') {
+            const validationErrors = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: validationErrors
+            });
         }
+
+        // Handle file upload errors
+        if (error.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+                error: 'File too large',
+                message: 'File size must be less than 5MB'
+            });
+        }
+        
+        if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+            return res.status(400).json({
+                error: 'Invalid file',
+                message: 'Only image files are allowed'
+            });
+        }
+
+        if (error.code === 'ENOENT') {
+            return res.status(500).json({
+                error: 'File system error',
+                message: 'Could not create upload directory'
+            });
+        }
+
+        // Handle formidable parsing errors
+        if (error.message && error.message.includes('maxFileSize')) {
+            return res.status(400).json({
+                error: 'File too large',
+                message: 'File size must be less than 5MB'
+            });
+        }
+
+        if (error.message && error.message.includes('filter')) {
+            return res.status(400).json({
+                error: 'Invalid file type',
+                message: 'Only image files are allowed'
+            });
+        }
+
+        // Generic error response
+        return res.status(500).json({
+            error: 'Internal server error',
+            message: 'Something went wrong processing your request',
+            details: process.env.NODE_ENV === 'development' ? error.message : 'Please try again later'
+        });
     }
 }

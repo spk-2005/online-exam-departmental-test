@@ -1,10 +1,8 @@
 // components/PaymentForm.js
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import Image from 'next/image';
 
 export default function PaymentForm() {
-    // Define the full list of groups here.
     const groups = [
         { id: 1, name: 'EOT GROUP' },
         { id: 2, name: 'GOT GROUP' },
@@ -16,7 +14,7 @@ export default function PaymentForm() {
     const [formData, setFormData] = useState({
         name: '',
         phoneNumber: '',
-        selectedGroups: [], // Stores selected group names (strings)
+        selectedGroups: [], 
         screenshot: null
     });
 
@@ -30,11 +28,16 @@ export default function PaymentForm() {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
+        
+        // Clean phone number input (remove non-digits)
+        const cleanValue = name === 'phoneNumber' ? value.replace(/\D/g, '') : value;
+        
         setFormData(prev => ({
             ...prev,
-            [name]: value
+            [name]: cleanValue
         }));
 
+        // Clear error when user starts typing
         if (errors[name]) {
             setErrors(prev => ({
                 ...prev,
@@ -45,7 +48,6 @@ export default function PaymentForm() {
 
     const handleCheckboxChange = (e) => {
         const { value, checked } = e.target;
-        // Find the group name corresponding to the checkbox value (ID)
         const selectedGroupName = groups.find(group => group.id === parseInt(value))?.name;
     
         if (!selectedGroupName) return; 
@@ -55,14 +57,12 @@ export default function PaymentForm() {
             let newGroups;
     
             if (checked) {
-                // Add the NAME of the group
                 newGroups = [...currentGroups, selectedGroupName];
             } else {
-                // Remove the NAME of the group
                 newGroups = currentGroups.filter(name => name !== selectedGroupName);
             }
     
-            // Clear error for selectedGroups if at least one is selected
+            // Clear error when user selects at least one group
             if (newGroups.length > 0 && errors.selectedGroups) {
                 setErrors(prevErrors => ({ ...prevErrors, selectedGroups: '' }));
             }
@@ -77,25 +77,17 @@ export default function PaymentForm() {
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            // Validate file type
-            if (!file.type.startsWith('image/')) {
-                setErrors(prev => ({
-                    ...prev,
-                    screenshot: 'Please select an image file (PNG, JPG, GIF)'
-                }));
-                setPreviewUrl(null);
-                if (fileInputRef.current) fileInputRef.current.value = '';
+            // Enhanced file validation
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+            if (!allowedTypes.includes(file.type)) {
+                setErrors(prev => ({ ...prev, screenshot: 'Please select a valid image file (PNG, JPG, JPEG, GIF)' }));
+                resetFileInput();
                 return;
             }
 
-            // Validate file size
-            if (file.size > 5 * 1024 * 1024) {
-                setErrors(prev => ({
-                    ...prev,
-                    screenshot: 'File size must be less than 5MB'
-                }));
-                setPreviewUrl(null);
-                if (fileInputRef.current) fileInputRef.current.value = '';
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                setErrors(prev => ({ ...prev, screenshot: 'File size must be less than 5MB' }));
+                resetFileInput();
                 return;
             }
 
@@ -104,28 +96,36 @@ export default function PaymentForm() {
                 screenshot: file
             }));
 
-            // Create a preview URL for the selected image
+            // Create preview URL
             const url = URL.createObjectURL(file);
             setPreviewUrl(url);
-
-            // Clear any previous error for screenshot
-            setErrors(prev => ({
-                ...prev,
-                screenshot: ''
-            }));
+            setErrors(prev => ({ ...prev, screenshot: '' }));
         }
     };
 
-    const removeFile = () => {
-        setFormData(prev => ({
-            ...prev,
-            screenshot: null
-        }));
+    const resetFileInput = () => {
+        if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+        }
         setPreviewUrl(null);
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
     };
+
+    const removeFile = () => {
+        setFormData(prev => ({ ...prev, screenshot: null }));
+        resetFileInput();
+    };
+
+    // Cleanup preview URL on unmount
+    useEffect(() => {
+        return () => {
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+            }
+        };
+    }, [previewUrl]);
 
     const validateForm = () => {
         const newErrors = {};
@@ -133,8 +133,10 @@ export default function PaymentForm() {
         // Name validation
         if (!formData.name.trim()) {
             newErrors.name = 'Name is required';
-        } else if (formData.name.length > 100) {
-            newErrors.name = 'Name cannot exceed 100 characters';
+        } else if (formData.name.trim().length < 2) {
+            newErrors.name = 'Name must be at least 2 characters long';
+        } else if (formData.name.trim().length > 50) {
+            newErrors.name = 'Name must be less than 50 characters';
         }
 
         // Phone number validation
@@ -144,7 +146,7 @@ export default function PaymentForm() {
             newErrors.phoneNumber = 'Phone number must be between 10-15 digits';
         }
 
-        // Group selection validation
+        // Groups validation
         if (formData.selectedGroups.length === 0) {
             newErrors.selectedGroups = 'Please select at least one test group';
         }
@@ -158,73 +160,252 @@ export default function PaymentForm() {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-        if (!validateForm()) {
-            return;
+    if (!validateForm()) {
+        // Scroll to first error
+        const firstErrorElement = document.querySelector('.text-red-600');
+        if (firstErrorElement) {
+            firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
+        return;
+    }
 
-        setIsSubmitting(true);
-        setSuccessMessage('');
-        setErrors({});
+    setIsSubmitting(true);
+    setSuccessMessage('');
+    setErrors({});
 
-        try {
-            const formDataToSend = new FormData();
-            formDataToSend.append('name', formData.name.trim());
-            formDataToSend.append('phoneNumber', formData.phoneNumber.trim());
-            // Stringify the array of selected group names before sending
-            formDataToSend.append('selectedGroups', JSON.stringify(formData.selectedGroups)); 
-            formDataToSend.append('screenshot', formData.screenshot);
+    try {
+        const formDataToSend = new FormData();
+        formDataToSend.append('name', formData.name.trim());
+        formDataToSend.append('phoneNumber', formData.phoneNumber.trim());
+        formDataToSend.append('selectedGroups', JSON.stringify(formData.selectedGroups)); 
+        formDataToSend.append('screenshot', formData.screenshot); 
 
-            const response = await fetch('/api/payment', {
-                method: 'POST',
-                body: formDataToSend
-            });
+        // Debug: Log the form data being sent
+        console.log('Form Data being sent:');
+        console.log('- Name:', formData.name.trim());
+        console.log('- Phone:', formData.phoneNumber.trim());
+        console.log('- Groups:', formData.selectedGroups);
+        console.log('- Screenshot:', formData.screenshot);
+        console.log('- Screenshot type:', formData.screenshot?.type);
+        console.log('- Screenshot size:', formData.screenshot?.size);
 
-            const data = await response.json();
+        const response = await fetch('/api/payment', {
+            method: 'POST',
+            body: formDataToSend
+        });
 
-            if (response.ok) {
-                setSuccessMessage('Payment details submitted successfully! We will Activate Your Account Within 1 hour if not contact Us!');
+        // Debug: Log response details
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
 
-                // Reset form data after successful submission
-                setFormData({
-                    name: '',
-                    phoneNumber: '',
-                    selectedGroups: [],
-                    screenshot: null
+        const data = await response.json();
+        console.log('Response data:', data);
+
+        if (response.ok) {
+            setSuccessMessage(
+                'Payment details submitted successfully! We will activate your account within 1 hour. If not, please contact us.'
+            );
+            
+            // Reset form
+            setFormData({ name: '', phoneNumber: '', selectedGroups: [], screenshot: null });
+            resetFileInput();
+            
+            // Scroll to success message
+            setTimeout(() => {
+                const successElement = document.querySelector('.bg-green-100');
+                if (successElement) {
+                    successElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+        } else {
+            // Enhanced error handling for different error types
+            console.error('API Error Response:', data);
+            
+            // Handle different error types from API
+            if (data.error === 'Duplicate entry' || data.error === 'Phone number already exists') {
+                // Handle duplicate phone number error
+                setErrors({ 
+                    phoneNumber: data.message || 'This phone number is already registered. Please use a different phone number.' 
                 });
-                setPreviewUrl(null);
-                if (fileInputRef.current) {
-                    fileInputRef.current.value = '';
-                }
+                
+                // Scroll to phone number field
+                setTimeout(() => {
+                    const phoneField = document.getElementById('phoneNumber');
+                    if (phoneField) {
+                        phoneField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        phoneField.focus();
+                    }
+                }, 100);
+                
+            } else if (data.error === 'Validation failed' && data.details) {
+                // Handle validation errors with details array
+                const apiErrors = {};
+                data.details.forEach(error => {
+                    const errorLower = error.toLowerCase();
+                    if (errorLower.includes('name')) {
+                        apiErrors.name = error;
+                    } else if (errorLower.includes('phone')) {
+                        apiErrors.phoneNumber = error;
+                    } else if (errorLower.includes('group')) {
+                        apiErrors.selectedGroups = error;
+                    } else if (errorLower.includes('screenshot') || errorLower.includes('image') || errorLower.includes('file')) {
+                        apiErrors.screenshot = error;
+                    } else {
+                        apiErrors.general = error;
+                    }
+                });
+                setErrors(apiErrors);
+                
+                // Scroll to first error
+                setTimeout(() => {
+                    const firstErrorElement = document.querySelector('.text-red-600');
+                    if (firstErrorElement) {
+                        firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100);
+                
+            } else if (data.error === 'File too large') {
+                // Handle file size error
+                setErrors({ 
+                    screenshot: data.message || 'File size must be less than 5MB' 
+                });
+                
+            } else if (data.error === 'Invalid file') {
+                // Handle invalid file type error
+                setErrors({ 
+                    screenshot: data.message || 'Only image files are allowed' 
+                });
+                
             } else {
-                // Handle API errors
-                if (data.details) {
-                    const apiErrors = {};
-                    data.details.forEach(error => {
-                        // Map backend error messages to frontend fields
-                        if (error.toLowerCase().includes('name')) apiErrors.name = error;
-                        else if (error.toLowerCase().includes('phone')) apiErrors.phoneNumber = error;
-                        else if (error.toLowerCase().includes('group')) apiErrors.selectedGroups = error;
-                        else if (error.toLowerCase().includes('screenshot')) apiErrors.screenshot = error;
-                        else apiErrors.general = error;
-                    });
-                    setErrors(apiErrors);
-                } else if (data.error) {
-                    // Handle generic API errors
-                    setErrors({ general: data.error });
-                } else {
-                    setErrors({ general: 'An unexpected error occurred. Please try again.' });
-                }
+                // Handle general errors
+                setErrors({ 
+                    general: data.message || data.error || 'An unexpected error occurred. Please try again.' 
+                });
             }
-        } catch (error) {
-            console.error('Error submitting payment:', error);
-            setErrors({ general: 'Network error or server unreachable. Please check your connection and try again.' });
-        } finally {
-            setIsSubmitting(false);
         }
-    };
+    } catch (error) {
+        console.error('Error submitting payment:', error);
+        console.error('Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
+        
+        // Handle network errors
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            setErrors({ 
+                general: 'Network error: Unable to connect to server. Please check your internet connection and try again.' 
+            });
+        } else {
+            setErrors({ 
+                general: 'Network error or server unreachable. Please check your connection and try again.' 
+            });
+        }
+    } finally {
+        setIsSubmitting(false);
+    }
+};
+
+
+// Alternative approach using JSON instead of FormData (for testing)
+const handleSubmitAlternative = async (e) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
+        const firstErrorElement = document.querySelector('.text-red-600');
+        if (firstErrorElement) {
+            firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return;
+    }
+
+    setIsSubmitting(true);
+    setSuccessMessage('');
+    setErrors({});
+
+    try {
+        // Convert image to base64 for JSON submission
+        const convertFileToBase64 = (file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        };
+
+        const screenshotBase64 = await convertFileToBase64(formData.screenshot);
+
+        const payload = {
+            name: formData.name.trim(),
+            phoneNumber: formData.phoneNumber.trim(),
+            selectedGroups: formData.selectedGroups,
+            screenshot: {
+                data: screenshotBase64,
+                type: formData.screenshot.type,
+                size: formData.screenshot.size,
+                name: formData.screenshot.name
+            }
+        };
+
+        console.log('JSON Payload:', payload);
+
+        const response = await fetch('/api/payment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+
+        console.log('Response status:', response.status);
+        const data = await response.json();
+        console.log('Response data:', data);
+
+        if (response.ok) {
+            setSuccessMessage(
+                'Payment details submitted successfully! We will activate your account within 1 hour. If not, please contact us.'
+            );
+            
+            setFormData({ name: '', phoneNumber: '', selectedGroups: [], screenshot: null });
+            resetFileInput();
+            
+            setTimeout(() => {
+                const successElement = document.querySelector('.bg-green-100');
+                if (successElement) {
+                    successElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+        } else {
+            console.error('API Error Response:', data);
+            
+            if (data.details) {
+                const apiErrors = {};
+                data.details.forEach(error => {
+                    const errorLower = error.toLowerCase();
+                    if (errorLower.includes('name')) apiErrors.name = error;
+                    else if (errorLower.includes('phone')) apiErrors.phoneNumber = error;
+                    else if (errorLower.includes('group')) apiErrors.selectedGroups = error;
+                    else if (errorLower.includes('screenshot')) apiErrors.screenshot = error;
+                    else apiErrors.general = error;
+                });
+                setErrors(apiErrors);
+            } else {
+                setErrors({ general: data.error || data.message || 'An unexpected error occurred. Please try again.' });
+            }
+        }
+    } catch (error) {
+        console.error('Error submitting payment:', error);
+        setErrors({ 
+            general: 'Network error or server unreachable. Please check your connection and try again.' 
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
+};
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
@@ -234,17 +415,16 @@ export default function PaymentForm() {
                 </h2>
                 <p className="text-base text-gray-600 text-center mb-6">
                     మీ కొనుగోలును నిర్ధారించడానికి మీ వివరాలను పూరించండి మరియు చెల్లింపు screenshot అప్‌లోడ్ చేయండి.
-                    
                 </p>
 
                 {successMessage && (
-                    <div className="bg-green-100 text-green-800 p-3 rounded-lg mb-6 text-center text-sm">
+                    <div className="bg-green-100 border border-green-400 text-green-800 p-3 rounded-lg mb-6 text-center text-sm">
                         {successMessage}
                     </div>
                 )}
 
                 {errors.general && (
-                    <div className="bg-red-100 text-red-800 p-3 rounded-lg mb-6 text-center text-sm">
+                    <div className="bg-red-100 border border-red-400 text-red-800 p-3 rounded-lg mb-6 text-center text-sm">
                         {errors.general}
                     </div>
                 )}
@@ -253,7 +433,9 @@ export default function PaymentForm() {
                     
                     {/* Name Field */}
                     <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                            Full Name *
+                        </label>
                         <input
                             type="text"
                             id="name"
@@ -261,9 +443,10 @@ export default function PaymentForm() {
                             value={formData.name}
                             onChange={handleInputChange}
                             placeholder="మీ పూర్తి పేరు"
-                            maxLength={100}
-                            className={`block w-full px-4 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm
-                            ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
+                            maxLength={50}
+                            className={`block w-full px-4 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors ${
+                                errors.name ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                            }`}
                         />
                         {errors.name && (
                             <p className="mt-1 text-xs text-red-600">{errors.name}</p>
@@ -271,34 +454,44 @@ export default function PaymentForm() {
                     </div>
                     
                     {/* Phone Number Field */}
+              <div>
+    <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">
+        WhatsApp Number *
+    </label>
+    <input
+        type="tel"
+        id="phoneNumber"
+        name="phoneNumber"
+        value={formData.phoneNumber}
+        onChange={handleInputChange}
+        placeholder="వాట్సాప్ నంబర్. ఉదాహరణకు, 9876543210"
+        maxLength={15}
+        className={`block w-full px-4 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors ${
+            errors.phoneNumber ? 'border-red-500 bg-red-50' : 'border-gray-300'
+        }`}
+    />
+    {errors.phoneNumber && (
+        <div className="mt-1 text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200">
+            <p className="font-medium">⚠️ {errors.phoneNumber}</p>
+            <p className="mt-1 text-gray-600">
+                If you believe this is an error, please contact support or try using a different phone number.
+            </p>
+        </div>
+    )}
+</div>
+                    {/* Group Selection */}
                     <div>
-                        <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">WhatsApp Number *</label>
-                        <input
-                            type="tel"
-                            id="phoneNumber"
-                            name="phoneNumber"
-                            value={formData.phoneNumber}
-                            onChange={handleInputChange}
-                            placeholder="వాట్సాప్ నంబర్.ఉదాహరణకు, 9876543210"
-                            maxLength={15}
-                            className={`block w-full px-4 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm
-                            ${errors.phoneNumber ? 'border-red-500' : 'border-gray-300'}`}
-                        />
-                        {errors.phoneNumber && (
-                            <p className="mt-1 text-xs text-red-600">{errors.phoneNumber}</p>
-                        )}
-                    </div>
-
-                    {/* Group Selection (Multi-select checkboxes) */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">కొనుగోలు చేసిన గ్రూప్‌ల ని ఎంచుకోండి(Select Groups) *</label>
-                        <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            కొనుగోలు చేసిన గ్రూప్‌ల ని ఎంచుకోండి (Select Groups) *
+                        </label>
+                        <div className={`space-y-2 p-3 border rounded-md ${
+                            errors.selectedGroups ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                        }`}>
                             {groups.map((group) => (
-                                <label key={group.id} className="flex items-center space-x-3">
+                                <label key={group.id} className="flex items-center space-x-3 cursor-pointer">
                                     <input
                                         type="checkbox"
                                         value={group.id}
-                                        // Check if the group name is included in the selectedGroups array
                                         checked={formData.selectedGroups.includes(group.name)} 
                                         onChange={handleCheckboxChange}
                                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
@@ -315,9 +508,14 @@ export default function PaymentForm() {
                     {/* File Upload */}
                     <div>
                         <label htmlFor="screenshot" className="block text-sm font-medium text-gray-700 mb-1">
-                            చెల్లింపు స్క్రీన్‌షాట్ (Payment Screenshot) * (Spported UPI: GPay,PhonePe,Paytm)
+                            చెల్లింపు స్క్రీన్‌షాట్ (Payment Screenshot) *
                         </label>
-                        <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-gray-400 transition-colors bg-gray-50 flex items-center justify-center min-h-[120px]"
+                        <p className="text-xs text-gray-500 mb-2">
+                            Supported UPI: GPay, PhonePe, Paytm | Max size: 5MB
+                        </p>
+                        <div className={`relative border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-gray-400 transition-colors bg-gray-50 flex items-center justify-center min-h-[120px] ${
+                            errors.screenshot ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                        }`}
                             onClick={() => fileInputRef.current?.click()}
                         >
                             <input
@@ -325,13 +523,12 @@ export default function PaymentForm() {
                                 id="screenshot"
                                 ref={fileInputRef}
                                 onChange={handleFileChange}
-                                accept="image/png, image/jpeg, image/gif"
+                                accept="image/png, image/jpeg, image/jpg, image/gif"
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             />
-                            {/* Preview section */}
+                            
                             {previewUrl ? (
                                 <div className="relative w-full h-full max-h-48">
-                                    {/* Using a standard <img> tag to display the blob URL preview */}
                                     <img
                                         src={previewUrl}
                                         alt="Screenshot preview"
@@ -341,13 +538,13 @@ export default function PaymentForm() {
                                     <button
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); removeFile(); }}
-                                        className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold shadow-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                                        className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold shadow-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+                                        aria-label="Remove screenshot"
                                     >
                                         ×
                                     </button>
                                 </div>
                             ) : (
-                                // Placeholder content when no file is selected
                                 <div className="text-gray-500">
                                     <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
                                         <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m-4-4a4 4 0 00-5.656 0L28 28m0 0l4 4m-4-4L20 20m-4 4l-4-4m-4 4l-4-4m-4 4l-4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -370,10 +567,8 @@ export default function PaymentForm() {
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
-                            ${isSubmitting
-                                ? 'bg-gray-400 cursor-not-allowed'
-                                : 'bg-blue-600 hover:bg-blue-700'
+                            className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                                isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
                             }`}
                         >
                             {isSubmitting ? (

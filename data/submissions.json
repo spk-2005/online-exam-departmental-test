@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1752400725726,
+    "name": "vgb",
+    "phoneNumber": "1234567887",
+    "selectedGroups": [
+      "EOT GROUP"
+    ],
+    "screenshotPath": "/uploads/1752400725716-nojgnustj.png",
+    "screenshotOriginalName": "JSX Instagram Reel Intro - Google Chrome 25-06-2025 15_19_43.png",
+    "screenshotSize": 127353,
+    "screenshotType": "image/png",
+    "submittedAt": "2025-07-13T09:58:45.726Z",
+    "status": "pending"
+  },
+  {
+    "id": 1752400807832,
+    "name": "kwe",
+    "phoneNumber": "1234567567",
+    "selectedGroups": [
+      "EOT GROUP",
+      "GOT GROUP",
+      "EOT & GOT GROUP"
+    ],
+    "screenshotPath": "/uploads/1752400807789-yf3y0cppt.gif",
+    "screenshotOriginalName": "confusion-brahmi.gif",
+    "screenshotSize": 2094125,
+    "screenshotType": "image/gif",
+    "submittedAt": "2025-07-13T10:00:07.832Z",
+    "status": "pending"
+  }
+]

@@ -11,6 +11,7 @@
   "dependencies": {
     "@sparticuz/chromium": "^138.0.0",
     "bcryptjs": "^2.4.3",
+    "formidable": "^3.5.4",
     "html2pdf.js": "^0.10.3",
     "jsonwebtoken": "^9.0.2",
     "jspdf": "^3.0.1",
