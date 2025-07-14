@@ -21,7 +21,7 @@ export default function PaymentForm() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState({});
     const [successMessage, setSuccessMessage] = useState('');
-    const [previewUrl, setPreviewUrl] = useState(null);
+    // No previewUrl state needed
 
     const fileInputRef = useRef(null);
     const router = useRouter();
@@ -96,18 +96,11 @@ export default function PaymentForm() {
                 screenshot: file
             }));
 
-            // Create preview URL
-            const url = URL.createObjectURL(file);
-            setPreviewUrl(url);
             setErrors(prev => ({ ...prev, screenshot: '' }));
         }
     };
 
     const resetFileInput = () => {
-        if (previewUrl) {
-            URL.revokeObjectURL(previewUrl);
-        }
-        setPreviewUrl(null);
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -118,14 +111,7 @@ export default function PaymentForm() {
         resetFileInput();
     };
 
-    // Cleanup preview URL on unmount
-    useEffect(() => {
-        return () => {
-            if (previewUrl) {
-                URL.revokeObjectURL(previewUrl);
-            }
-        };
-    }, [previewUrl]);
+    // No useEffect for previewUrl cleanup needed
 
     const validateForm = () => {
         const newErrors = {};
@@ -164,7 +150,6 @@ export default function PaymentForm() {
         e.preventDefault();
 
         if (!validateForm()) {
-            // Scroll to first error
             const firstErrorElement = document.querySelector('.text-red-600');
             if (firstErrorElement) {
                 firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -337,18 +322,19 @@ export default function PaymentForm() {
                 });
             };
 
-            const screenshotBase64 = await convertFileToBase64(formData.screenshot);
+            const screenshotBase64 = formData.screenshot ? await convertFileToBase64(formData.screenshot) : null;
+
 
             const payload = {
                 name: formData.name.trim(),
                 phoneNumber: formData.phoneNumber.trim(),
                 selectedGroups: formData.selectedGroups,
-                screenshot: {
+                screenshot: screenshotBase64 ? {
                     data: screenshotBase64,
                     type: formData.screenshot.type,
                     size: formData.screenshot.size,
                     name: formData.screenshot.name
-                }
+                } : null
             };
 
             console.log('JSON Payload:', payload);
@@ -408,10 +394,7 @@ export default function PaymentForm() {
     };
 
     return (
-        // Changed `py-8 px-4 sm:px-6 lg:px-8` to `py-4 px-2 sm:px-4 lg:px-8` for reduced mobile padding
         <div className="min-h-screen bg-gray-50 flex items-center justify-center py-4 px-2 sm:px-4 lg:px-8">
-            {/* Removed `shadow-lg` from the main container */}
-            {/* Changed `p-6 sm:p-8` to `p-4 sm:p-6` for reduced mobile padding */}
             <div className="max-w-md w-full bg-white rounded-xl p-4 sm:p-6">
                 <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 text-center mb-3">
                     Payment ధృవీకరణ ఫారం
@@ -508,7 +491,7 @@ export default function PaymentForm() {
                         )}
                     </div>
 
-                    {/* File Upload */}
+                    {/* File Upload - Modified to display filename only */}
                     <div>
                         <label htmlFor="screenshot" className="block text-sm font-medium text-gray-700 mb-1">
                             చెల్లింపు స్క్రీన్‌షాట్ (Payment Screenshot) *
@@ -516,7 +499,7 @@ export default function PaymentForm() {
                         <p className="text-xs text-gray-500 mb-2">
                             Supported UPI: GPay, PhonePe, Paytm | Max size: 5MB
                         </p>
-                        <div className={`relative border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-gray-400 transition-colors bg-gray-50 flex items-center justify-center min-h-[120px] ${
+                        <div className={`relative border-2 border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-gray-400 transition-colors bg-gray-50 flex flex-col items-center justify-center ${
                                 errors.screenshot ? 'border-red-500 bg-red-50' : 'border-gray-300'
                             }`}
                             onClick={() => fileInputRef.current?.click()}
@@ -530,25 +513,22 @@ export default function PaymentForm() {
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             />
 
-                            {previewUrl ? (
-                                <div className="relative w-full h-full max-h-48">
-                                    <img
-                                        src={previewUrl}
-                                        alt="Screenshot preview"
-                                        style={{ objectFit: 'contain', width: '100%', height: '100%' }}
-                                        className="rounded-md"
-                                    />
+                            {formData.screenshot ? (
+                                <div className="flex items-center justify-between w-full px-2 py-1">
+                                    <span className="text-sm text-gray-800 truncate mr-2">
+                                        {formData.screenshot.name}
+                                    </span>
                                     <button
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); removeFile(); }}
-                                        className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold shadow-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+                                        className="text-red-500 hover:text-red-700 text-sm font-medium flex-shrink-0"
                                         aria-label="Remove screenshot"
                                     >
-                                        ×
+                                        Remove
                                     </button>
                                 </div>
                             ) : (
-                                <div className="text-gray-500">
+                                <div className="text-gray-500 flex flex-col items-center">
                                     <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
                                         <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m-4-4a4 4 0 00-5.656 0L28 28m0 0l4 4m-4-4L20 20m-4 4l-4-4m-4 4l-4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
