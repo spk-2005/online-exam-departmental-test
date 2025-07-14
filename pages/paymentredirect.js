@@ -36,7 +36,7 @@ export default function PaymentRedirect() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto my-8 p-6 sm:p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
+        <div className="max-w-4xl mx-auto my-8 p-6 sm:p-3 bg-white rounded-2xl  border border-gray-100">
 
             {/* Marquee with Blinking Payment Verification Button (Mobile Only) */}
             {/* Added 'lg:hidden' to hide on large screens */}
