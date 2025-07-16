@@ -1,7 +1,12 @@
 // components/ResponseSheet.js
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 
-const ResponseSheet = ({ username, group, test, questions, attemptId: propAttemptId }) => {
+const ResponseSheet = ({ username, group, test, questions: propQuestions, attemptId: propAttemptId }) => {
+  // Defensive programming: Ensure 'questions' is an array.
+  // This 'questions' variable will now always be an array,
+  // preventing the "not iterable" error in useMemo.
+  const questions = Array.isArray(propQuestions) ? propQuestions : [];
+
   const [userResponses, setUserResponses] = useState([]);
   const [fetchingResponses, setFetchingResponses] = useState(true);
   const [responsesError, setResponsesError] = useState(null);
@@ -9,9 +14,9 @@ const ResponseSheet = ({ username, group, test, questions, attemptId: propAttemp
 
   // Memoize questions prop to avoid unnecessary re-sorts if questions array reference changes
   const sortedOriginalQuestions = useMemo(() => {
-    // Ensure original questions are sorted for consistent indexing
+    // This line is now safe because 'questions' is guaranteed to be an array from above
     return [...questions].sort((a, b) => a.questionNumber - b.questionNumber);
-  }, [questions]);
+  }, [questions]); // 'questions' is now the local, guaranteed-array variable
 
   const fetchUserResponses = useCallback(async () => {
     setFetchingResponses(true);
@@ -47,6 +52,7 @@ const ResponseSheet = ({ username, group, test, questions, attemptId: propAttemp
       const data = await res.json();
       if (data.success && Array.isArray(data.responses)) {
         // Sort responses based on their questionNumber or original questions order
+        // This is safe because sortedOriginalQuestions is also derived from a guaranteed array
         const sortedFetchedResponses = data.responses.sort((a, b) => {
           const originalQ_A = sortedOriginalQuestions.find(q => q._id === a.questionId);
           const originalQ_B = sortedOriginalQuestions.find(q => q._id === b.questionId);
@@ -56,7 +62,7 @@ const ResponseSheet = ({ username, group, test, questions, attemptId: propAttemp
         setResponsesError(null);
         setCurrentQuestionIndex(0); // Reset to the first question when new responses are loaded
       } else {
-        console.warn("API response was successful but responses array is missing or invalid.", data);
+        console.warn("API response was successful but responses array is missing or invalid. Setting empty array.", data);
         setUserResponses([]);
         setResponsesError("Failed to parse response data.");
       }
@@ -244,6 +250,7 @@ const ResponseSheet = ({ username, group, test, questions, attemptId: propAttemp
       ) : (
         <div className="text-center text-gray-600 p-4">
           <p>No response data available for this question index.</p>
+          <p>This may happen if original questions are not loaded yet or there's no response for the current index.</p>
         </div>
       )}
 
