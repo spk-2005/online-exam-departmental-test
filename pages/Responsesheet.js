@@ -3,20 +3,16 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 
 const ResponseSheet = ({ username, group, test, questions: propQuestions, attemptId: propAttemptId }) => {
   // Defensive programming: Ensure 'questions' is an array.
-  // This 'questions' variable will now always be an array,
-  // preventing the "not iterable" error in useMemo.
   const questions = Array.isArray(propQuestions) ? propQuestions : [];
 
   const [userResponses, setUserResponses] = useState([]);
   const [fetchingResponses, setFetchingResponses] = useState(true);
   const [responsesError, setResponsesError] = useState(null);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0); // New state for navigation
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
-  // Memoize questions prop to avoid unnecessary re-sorts if questions array reference changes
   const sortedOriginalQuestions = useMemo(() => {
-    // This line is now safe because 'questions' is guaranteed to be an array from above
     return [...questions].sort((a, b) => a.questionNumber - b.questionNumber);
-  }, [questions]); // 'questions' is now the local, guaranteed-array variable
+  }, [questions]);
 
   const fetchUserResponses = useCallback(async () => {
     setFetchingResponses(true);
@@ -26,7 +22,6 @@ const ResponseSheet = ({ username, group, test, questions: propQuestions, attemp
       const decodedGroup = decodeURIComponent(group);
       const decodedTest = decodeURIComponent(test);
 
-      // CRITICAL: Ensure attemptId is passed to fetch specific attempt's responses
       if (!username || !decodedGroup || !decodedTest || !propAttemptId) {
         console.warn("Missing quiz parameters or attemptId for fetching responses in ResponseSheet. Aborting fetch.");
         setResponsesError("Quiz parameters or attempt ID missing. Cannot fetch responses.");
@@ -38,10 +33,9 @@ const ResponseSheet = ({ username, group, test, questions: propQuestions, attemp
         username: username,
         group: decodedGroup,
         test: decodedTest,
-        attemptId: propAttemptId // Pass the attemptId
+        attemptId: propAttemptId
       });
 
-      // API route needs to be updated to filter by attemptId
       const res = await fetch(`/api/Response/get?${queryParams.toString()}`);
 
       if (!res.ok) {
@@ -51,8 +45,6 @@ const ResponseSheet = ({ username, group, test, questions: propQuestions, attemp
 
       const data = await res.json();
       if (data.success && Array.isArray(data.responses)) {
-        // Sort responses based on their questionNumber or original questions order
-        // This is safe because sortedOriginalQuestions is also derived from a guaranteed array
         const sortedFetchedResponses = data.responses.sort((a, b) => {
           const originalQ_A = sortedOriginalQuestions.find(q => q._id === a.questionId);
           const originalQ_B = sortedOriginalQuestions.find(q => q._id === b.questionId);
@@ -60,7 +52,7 @@ const ResponseSheet = ({ username, group, test, questions: propQuestions, attemp
         });
         setUserResponses(sortedFetchedResponses);
         setResponsesError(null);
-        setCurrentQuestionIndex(0); // Reset to the first question when new responses are loaded
+        setCurrentQuestionIndex(0);
       } else {
         console.warn("API response was successful but responses array is missing or invalid. Setting empty array.", data);
         setUserResponses([]);
@@ -72,23 +64,45 @@ const ResponseSheet = ({ username, group, test, questions: propQuestions, attemp
     } finally {
       setFetchingResponses(false);
     }
-  }, [username, group, test, propAttemptId, sortedOriginalQuestions]); // Add propAttemptId to dependencies
+  }, [username, group, test, propAttemptId, sortedOriginalQuestions]);
 
   useEffect(() => {
     fetchUserResponses();
-  }, [fetchUserResponses]);
+
+    // Event listeners for preventing copy/paste and context menu
+    const preventCopyPaste = (e) => {
+      e.preventDefault();
+      // Optionally, show a message to the user
+      // alert("Copying content is disabled.");
+    };
+
+    const preventContextMenu = (e) => {
+      e.preventDefault();
+    };
+
+    document.addEventListener('copy', preventCopyPaste);
+    document.addEventListener('cut', preventCopyPaste);
+    document.addEventListener('paste', preventCopyPaste);
+    document.addEventListener('contextmenu', preventContextMenu);
+
+    // Cleanup function to remove event listeners
+    return () => {
+      document.removeEventListener('copy', preventCopyPaste);
+      document.removeEventListener('cut', preventCopyPaste);
+      document.removeEventListener('paste', preventCopyPaste);
+      document.removeEventListener('contextmenu', preventContextMenu);
+    };
+  }, [fetchUserResponses]); // Dependencies for useEffect
 
   const handleRetry = useCallback(() => {
     fetchUserResponses();
   }, [fetchUserResponses]);
 
-  // Derive the current response based on currentQuestionIndex
   const currentResponse = userResponses[currentQuestionIndex];
   const currentOriginalQuestion = currentResponse
     ? sortedOriginalQuestions.find(q => q._id === currentResponse.questionId)
     : null;
 
-  // Navigation handlers
   const goToNextQuestion = useCallback(() => {
     setCurrentQuestionIndex(prevIndex => Math.min(prevIndex + 1, userResponses.length - 1));
   }, [userResponses.length]);
@@ -111,7 +125,6 @@ const ResponseSheet = ({ username, group, test, questions: propQuestions, attemp
     if (isSelected) {
       return isCorrect ? 'bg-green-500' : 'bg-red-500';
     }
-    // Highlight correct answer even if not selected by user
     return isCorrect ? 'bg-green-500' : 'bg-gray-400';
   }, []);
 
@@ -125,11 +138,29 @@ const ResponseSheet = ({ username, group, test, questions: propQuestions, attemp
     return isCorrect ? 'font-bold text-green-700' : 'text-gray-700';
   }, []);
 
+  // Common styles to apply to elements containing sensitive text
+  const noSelectAndNoScreenshotStyle = {
+    WebkitTouchCallout: 'none', /* iOS Safari */
+    WebkitUserSelect: 'none',   /* Safari */
+    KhtmlUserSelect: 'none',    /* Konqueror HTML */
+    MozUserSelect: 'none',      /* Old versions of Firefox */
+    MsUserSelect: 'none',       /* Internet Explorer/Edge */
+    UserSelect: 'none',         /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
+    pointerEvents: 'auto',      /* Allow pointer events despite user-select */
+    '-webkit-user-drag': 'none', /* Prevent dragging text/images */
+    filter: 'brightness(100%)',  /* Helps with some screenshot tools (e.g., dark mode issues) */
+    // Add these for screenshot deterrence, but be aware of accessibility impact
+    // This is not foolproof and may affect readability for some users.
+    // '-webkit-print-color-adjust': 'exact',
+    // 'color-adjust': 'exact',
+    // 'print-color-adjust': 'exact'
+  };
+
 
   // --- Loading, Error, No Responses States ---
   if (fetchingResponses) {
     return (
-      <div className="mt-8 pt-8 border-t-2 border-gray-200">
+      <div className="mt-8 pt-8 border-t-2 border-gray-200" style={noSelectAndNoScreenshotStyle}>
         <h3 className="text-xl sm:text-2xl font-bold text-center mb-6 text-gray-800">Detailed Response Sheet</h3>
         <div className="text-center text-gray-600 p-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
@@ -141,7 +172,7 @@ const ResponseSheet = ({ username, group, test, questions: propQuestions, attemp
 
   if (responsesError) {
     return (
-      <div className="mt-8 pt-8 border-t-2 border-gray-200">
+      <div className="mt-8 pt-8 border-t-2 border-gray-200" style={noSelectAndNoScreenshotStyle}>
         <h3 className="text-xl sm:text-2xl font-bold text-center mb-6 text-gray-800">Detailed Response Sheet</h3>
         <div className="text-center text-red-600 p-4">
           <div className="text-red-500 text-3xl mb-2">⚠️</div>
@@ -159,7 +190,7 @@ const ResponseSheet = ({ username, group, test, questions: propQuestions, attemp
 
   if (userResponses.length === 0) {
     return (
-      <div className="mt-8 pt-8 border-t-2 border-gray-200">
+      <div className="mt-8 pt-8 border-t-2 border-gray-200" style={noSelectAndNoScreenshotStyle}>
         <h3 className="text-xl sm:text-2xl font-bold text-center mb-6 text-gray-800">Detailed Response Sheet</h3>
         <div className="text-center text-gray-600 p-4">
           <p>No detailed responses found for this test and attempt ID.</p>
@@ -171,7 +202,7 @@ const ResponseSheet = ({ username, group, test, questions: propQuestions, attemp
 
   // --- Main Render for Single Question View ---
   return (
-    <div className="mt-8 pt-8 border-t-2 border-gray-200">
+    <div className="mt-8 pt-8 border-t-2 border-gray-200" style={noSelectAndNoScreenshotStyle}> {/* Apply to main container */}
       <h3 className="text-xl sm:text-2xl font-bold text-center mb-6 text-gray-800">Detailed Response Sheet</h3>
 
       <div className="text-center text-gray-600 mb-4">
