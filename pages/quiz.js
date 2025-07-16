@@ -1,38 +1,37 @@
 import React, { useEffect, useState, useRef } from "react";
-
 import { Clock, User, CheckCircle, AlertCircle, Circle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRouter } from "next/router";
+import ResponseSheet from "./Responsesheet";
+
 export default function Quiz() {
+  const router = useRouter();
+  
+  // Generate unique attempt ID when component mounts
+  const [attemptId] = useState(() => `attempt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const [attemptStartTime] = useState(() => new Date().toISOString());
+  
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
 
   useEffect(() => {
-  const handleBeforeUnload = (e) => {
-    e.preventDefault();
-    e.returnValue = "";  // Modern browsers ignore custom messages but this prevents reload
-  };
-
-  window.addEventListener("beforeunload", handleBeforeUnload);
-
-  return () => {
-    window.removeEventListener("beforeunload", handleBeforeUnload);
-  };
-}, []);
-
-
-
-
-  const router = useRouter();
-   useEffect(() => {
     const handleBackButton = (event) => {
       event.preventDefault();
-
       const confirmLeave = window.confirm(
         "If you go back, you'll lose your attempt. Are you sure you want to leave?"
       );
 
       if (confirmLeave) {
-        router.push("/"); // or your custom page
+        router.push("/");
       } else {
-        // pushState again to prevent navigation
         history.pushState(null, null, location.href);
       }
     };
@@ -47,7 +46,6 @@ export default function Quiz() {
 
   const [group, setGroup] = useState("");
   const [test, setTest] = useState("");
-
   const timerIntervalRef = useRef(null);
 
   const formatTime = (seconds) => {
@@ -64,7 +62,6 @@ export default function Quiz() {
     }
   };
 
-  
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedGroup = localStorage.getItem("quizGroup");
@@ -84,7 +81,7 @@ export default function Quiz() {
   const [selectedOption, setSelectedOption] = useState({});
   const [markedQuestions, setMarkedQuestions] = useState({});
   const [status, setStatus] = useState({});
-  const [timer, setTimer] = useState(7200); // 2 hours in seconds
+  const [timer, setTimer] = useState(7200);
   const [showSummary, setShowSummary] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [score, setScore] = useState(0);
@@ -95,6 +92,16 @@ export default function Quiz() {
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [questionPaperOpen, setQuestionPaperOpen] = useState(false);
   const [instructionOpen, setInstructionOpen] = useState(false);
+  const [currentAttemptResponses, setCurrentAttemptResponses] = useState([]); // Store current attempt responses
+
+    const responseSheetRef = useRef(null);
+ const scrollToResponseSheet = () => {
+    if (responseSheetRef.current) {
+      responseSheetRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+
 
   useEffect(() => {
     setIsClient(true);
@@ -143,17 +150,13 @@ export default function Quiz() {
       }
 
       setQuestions(data);
-      // Initialize status for all questions as 'not-visited'
       const initialStatus = {};
       data.forEach((_, i) => {
         initialStatus[i] = 'not-visited';
       });
       setStatus(initialStatus);
-
       setError(null);
-
-
-              await decreaseAttempts();
+      await decreaseAttempts();
 
     } catch (err) {
       console.error('Error fetching questions:', err);
@@ -162,47 +165,46 @@ export default function Quiz() {
       setLoading(false);
     }
   };
-const decreaseAttempts = async () => {
-  try {
-    const username = localStorage.getItem("username");
-    if (!username) return;
 
-    const res = await fetch("/api/decrease", {  // ensure correct route here
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        username: username,
-        group: decodeURIComponent(group),
-        testName: decodeURIComponent(test)
-      })
-    });
+  const decreaseAttempts = async () => {
+    try {
+      const username = localStorage.getItem("username");
+      if (!username) return;
 
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error("Failed to decrease attempts:", errorText);
-    } else {
-      const data = await res.json();
-      console.log("Attempts decreased:", data);
+      const res = await fetch("/api/decrease", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          username: username,
+          group: decodeURIComponent(group),
+          testName: decodeURIComponent(test)
+        })
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Failed to decrease attempts:", errorText);
+      } else {
+        const data = await res.json();
+        console.log("Attempts decreased:", data);
+      }
+    } catch (err) {
+      console.error("Error decreasing attempts:", err);
     }
-  } catch (err) {
-    console.error("Error decreasing attempts:", err);
-  }
-};
-
+  };
 
   useEffect(() => {
     if (questions.length === 0) return;
 
-    // Only start timer if it's not already running and not on summary page
     if (!timerIntervalRef.current && !showSummary) {
       timerIntervalRef.current = setInterval(() => {
         setTimer(prev => {
           if (prev <= 0) {
             clearInterval(timerIntervalRef.current);
             timerIntervalRef.current = null;
-            handleSubmit(); // Auto-submit when timer reaches 0
+            handleSubmit();
             return 0;
           }
           return prev - 1;
@@ -215,27 +217,26 @@ const decreaseAttempts = async () => {
         clearInterval(timerIntervalRef.current);
       }
     };
-  }, [questions.length, showSummary]); // Add showSummary to dependency array to prevent timer restart after submission
-useEffect(() => {
-  if (!showSummary) return;
+  }, [questions.length, showSummary]);
 
-  const handlePopState = (e) => {
-    e.preventDefault();
-    router.replace("/");
-  };
+  useEffect(() => {
+    if (!showSummary) return;
 
-  window.history.pushState(null, null, window.location.href);
-  window.addEventListener("popstate", handlePopState);
+    const handlePopState = (e) => {
+      e.preventDefault();
+      router.replace("/");
+    };
 
-  return () => {
-    window.removeEventListener("popstate", handlePopState);
-  };
-}, [showSummary, router]);
+    window.history.pushState(null, null, window.location.href);
+    window.addEventListener("popstate", handlePopState);
 
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [showSummary, router]);
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
-      // Only prompt if quiz is active and not showing summary
       if (questions.length > 0 && !showSummary) {
         e.preventDefault();
         e.returnValue = "";
@@ -249,12 +250,10 @@ useEffect(() => {
 
   const handleOptionChange = (val) => {
     setSelectedOption(prev => ({ ...prev, [index]: val }));
-    // If the question was marked for review without an answer, and now answered, update status
     setStatus(prev => ({ ...prev, [index]: markedQuestions[index] ? "answered-marked" : "answered" }));
   };
 
   const nextQuestion = () => {
-    // Only update status if it's not already 'answered-marked'
     if (status[index] !== "answered-marked" && selectedOption[index] && status[index] !== "answered") {
       setStatus(prev => ({ ...prev, [index]: "answered" }));
     } else if (!selectedOption[index] && status[index] === "not-visited") {
@@ -269,7 +268,6 @@ useEffect(() => {
 
   const markReview = () => {
     setMarkedQuestions(prev => ({ ...prev, [index]: true }));
-    // If an option is selected, it's answered-marked, otherwise just review
     setStatus(prev => ({ ...prev, [index]: selectedOption[index] ? "answered-marked" : "review" }));
     if (index < questions.length - 1) setIndex(index + 1);
   };
@@ -280,99 +278,210 @@ useEffect(() => {
       delete updated[index];
       return updated;
     });
-    // Set status based on whether it was marked for review or not
     setStatus(prev => ({ ...prev, [index]: markedQuestions[index] ? "review" : "not-answered" }));
   };
 
   const goToQuestion = (questionIndex) => {
-    // Before navigating, update the status of the current question if not already handled
     if (status[index] === 'not-visited') {
       setStatus(prev => ({ ...prev, [index]: "not-answered" }));
     } else if (selectedOption[index] && status[index] !== "answered-marked" && status[index] !== "answered") {
-      // If an option is selected and it's not already set to answered/answered-marked, set it
       setStatus(prev => ({ ...prev, [index]: markedQuestions[index] ? "answered-marked" : "answered" }));
     } else if (!selectedOption[index] && status[index] !== "review" && status[index] !== "not-answered") {
-      // If no option is selected and it's not already set to review/not-answered, set it
       setStatus(prev => ({ ...prev, [index]: markedQuestions[index] ? "review" : "not-answered" }));
     }
     setIndex(questionIndex);
   };
+// Inside your Quiz.js component
 
 const handleSubmit = async () => {
-  // Stop the timer immediately when submit is clicked
-  if (timerIntervalRef.current) {
-    clearInterval(timerIntervalRef.current);
-    timerIntervalRef.current = null;
-  }
+    // Clear the timer immediately upon submission
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
 
-  try {
-    let scoreCalc = 0;
-    let attemptedCount = 0;
+    try {
+      // Calculate time elapsed for this specific attempt
+      const totalQuizDuration = 7200; // Total duration in seconds (2 hours)
+      const timeElapsedSeconds = totalQuizDuration - timer; // 'timer' counts down, so this is time taken
+      const attemptEndTime = new Date().toISOString(); // End time for this specific attempt
 
-    questions.forEach((q, i) => {
-      if (selectedOption[i] !== undefined) { // Check if an option was truly selected for this question
-        attemptedCount++;
-        if (selectedOption[i] === q.options[q.correct.charCodeAt(0) - 65]) {
-          scoreCalc++;
+      // Format time taken for display and storage
+      const hoursTaken = Math.floor(timeElapsedSeconds / 3600);
+      const minutesTaken = Math.floor((timeElapsedSeconds % 3600) / 60);
+      const secondsTaken = timeElapsedSeconds % 60;
+      const formattedTimeTaken = `${hoursTaken.toString().padStart(2, '0')}:${minutesTaken.toString().padStart(2, '0')}:${secondsTaken.toString().padStart(2, '0')}`;
+
+      let scoreCalc = 0;
+      let attemptedCount = 0;
+      const responses = []; // Array to hold individual question responses for this attempt
+
+      // Get current date and time in Indian timezone for consistent storage
+      const currentDateTime = new Date();
+      const indianDate = currentDateTime.toLocaleDateString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      const indianTime = currentDateTime.toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour12: true,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+
+      // Iterate through questions to calculate score and prepare response data
+      questions.forEach((q, i) => {
+        const selectedAnswer = selectedOption[i];
+        const correctAnswer = q.options[q.correct.charCodeAt(0) - 65];
+        const isAnswered = selectedAnswer !== undefined;
+        const isCorrect = isAnswered && selectedAnswer === correctAnswer;
+        const isMarkedForReview = markedQuestions[i] || false;
+        const questionStatus = status[i] || 'not-visited';
+
+        if (isAnswered) {
+          attemptedCount++;
+          if (isCorrect) {
+            scoreCalc++;
+          }
+        }
+
+        const responseData = {
+          attemptId: attemptId, // CRITICAL: Link each response to the unique attempt ID
+          username: localStorage.getItem('username') || name, // Ensure username is captured
+          group: decodeURIComponent(group),
+          test: decodeURIComponent(test),
+          questionId: q._id || q.id, // Use _id if from MongoDB, otherwise a unique ID
+          questionNumber: i + 1,
+          questionText: q.question,
+          options: q.options,
+          correctAnswer: correctAnswer,
+          correctOption: q.correct,
+          selectedOption: selectedAnswer || null, // Store selected option (or null if not selected)
+          isCorrect: isCorrect,
+          markedForReview: isMarkedForReview,
+          status: questionStatus,
+          attemptStartTime: attemptStartTime,
+          attemptEndTime: attemptEndTime, // Specific end time for this attempt
+          submittedAt: currentDateTime.toISOString(), // Precise submission time
+          submittedDate: indianDate,
+          submittedTime: indianTime,
+          timeTaken: formattedTimeTaken,
+          timeElapsed: timeElapsedSeconds,
+          totalQuestions: questions.length, // Include context for the response
+          totalScore: scoreCalc,
+          totalAttempted: attemptedCount,
+          percentage: ((scoreCalc / questions.length) * 100).toFixed(2)
+        };
+        responses.push(responseData);
+      });
+
+      // Store current attempt responses in state for the ResponseSheet component
+      setCurrentAttemptResponses(responses);
+
+      // Update local state for summary display
+      setScore(scoreCalc);
+      setShowSummary(true);
+      setShowSubmitConfirm(false);
+
+      const actualUsername = localStorage.getItem('username') || name; // Get the user's actual name
+
+      // Prepare data for the overall quiz result summary
+      const resultData = {
+        attemptId: attemptId, // CRITICAL: Link summary to the unique attempt ID
+        name: actualUsername,
+        group: decodeURIComponent(group),
+        test: decodeURIComponent(test),
+        score: scoreCalc,
+        attempted: attemptedCount,
+        unattempted: questions.length - attemptedCount,
+        total: questions.length,
+        percentage: ((scoreCalc / questions.length) * 100).toFixed(2),
+        finalResult: ((scoreCalc / questions.length) * 100) >= 40 ? "PASS" : "FAIL",
+        timeTaken: formattedTimeTaken,
+        submittedAt: currentDateTime.toISOString(), // Precise submission time for the summary
+        submittedDate: indianDate,
+        submittedTime: indianTime,
+        attemptStartTime: attemptStartTime,
+        attemptEndTime: attemptEndTime
+      };
+
+      // --- Submission to Backend ---
+
+      // 1. Submit overall quiz results
+      const submitResultRes = await fetch("/api/results/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(resultData)
+      });
+
+      if (!submitResultRes.ok) {
+        const errorText = await submitResultRes.text();
+        console.error('Failed to submit overall quiz results:', errorText);
+        // TODO: Handle this error more robustly (e.g., show a user-friendly message)
+      } else {
+        const submitResultData = await submitResultRes.json();
+        console.log('Overall quiz results submission response:', submitResultData);
+        if (submitResultData.success) {
+          console.log('✅ Overall quiz results successfully saved');
+        } else {
+          console.log('❌ Overall quiz results were NOT saved');
+          console.log('Reason:', submitResultData.error || 'Unknown');
         }
       }
-    });
 
-    setScore(scoreCalc);
-    setShowSummary(true);
-    setShowSubmitConfirm(false);
+      // 2. Submit individual question responses (response sheet)
+      try {
+        const submitResponsesRes = await fetch("/api/Response/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            responses, // Array of individual question responses
+            attemptId: attemptId, // Ensure attemptId is passed for linking
+            metadata: { // Pass all relevant metadata for consistency/redundancy in the responses collection if needed
+              username: actualUsername,
+              group: decodeURIComponent(group),
+              test: decodeURIComponent(test),
+              totalQuestions: questions.length,
+              totalScore: scoreCalc,
+              totalAttempted: attemptedCount,
+              percentage: ((scoreCalc / questions.length) * 100).toFixed(2),
+              finalResult: ((scoreCalc / questions.length) * 100) >= 40 ? "PASS" : "FAIL",
+              submittedAt: currentDateTime.toISOString(), // Ensure submittedAt is passed
+              submittedDate: indianDate,
+              submittedTime: indianTime,
+              timeElapsed: timeElapsedSeconds,
+            }
+          })
+        });
 
-    const actualUsername = localStorage.getItem('username') || name;
-
-    const totalTimeInSeconds = 7200;
-    const timeElapsedSeconds = totalTimeInSeconds - timer; // This correctly calculates time spent
-
-    const hoursTaken = Math.floor(timeElapsedSeconds / 3600);
-    const minutesTaken = Math.floor((timeElapsedSeconds % 3600) / 60);
-    const secondsTaken = timeElapsedSeconds % 60;
-    const formattedTimeTaken = `${hoursTaken.toString().padStart(2, '0')}:${minutesTaken.toString().padStart(2, '0')}:${secondsTaken.toString().padStart(2, '0')}`;
-
-    const resultData = {
-      name: actualUsername,
-      group: decodeURIComponent(group),
-      test: decodeURIComponent(test),
-      score: scoreCalc,
-      attempted: attemptedCount,
-      unattempted: questions.length - attemptedCount,
-      total: questions.length,
-      percentage: ((scoreCalc / questions.length) * 100).toFixed(2),
-      finalresult: ((scoreCalc / questions.length) * 100) >= 40 ? "PASS" : "FAIL",
-      timeTaken: formattedTimeTaken,
-      submittedAt: new Date().toISOString()
-    };
-
-    const submitRes = await fetch("/api/results/submit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(resultData)
-    });
-
-    if (!submitRes.ok) {
-      const errorText = await submitRes.text();
-      console.error('Failed to submit results:', errorText);
-    } else {
-      const responseData = await submitRes.json();
-      console.log('Submit response:', responseData);
-      
-      if (responseData.success) {
-        console.log('✅ Results successfully saved');
-      } else {
-        console.log('❌ Results were NOT saved');
-        console.log('Reason:', responseData.error || 'Unknown');
+        if (!submitResponsesRes.ok) {
+          const errorText = await submitResponsesRes.text();
+          console.error('Failed to submit individual responses:', errorText);
+          // TODO: Handle this error more robustly
+        } else {
+          const submitResponsesData = await submitResponsesRes.json();
+          console.log('Individual responses submission response:', submitResponsesData);
+          if (submitResponsesData.success) {
+            console.log('✅ Individual responses successfully saved');
+          } else {
+            console.log('❌ Individual responses were NOT saved');
+            console.log('Reason:', submitResponsesData.error || 'Unknown');
+          }
+        }
+      } catch (err) {
+        console.error('Error submitting individual responses:', err);
       }
+
+    } catch (err) {
+      console.error('An unexpected error occurred during quiz submission:', err);
+      // TODO: Display a generic error message to the user
     }
-  } catch (err) {
-    console.error('Error submitting results:', err);
-  }
-};
+  };
 
   const getQuestionStats = () => {
-    // Corrected logic for status counts
     const answered = Object.keys(status).filter(i => status[i] === 'answered').length;
     const review = Object.keys(status).filter(i => status[i] === 'review').length;
     const notAnswered = Object.keys(status).filter(i => status[i] === 'not-answered').length;
@@ -460,7 +569,6 @@ const handleSubmit = async () => {
     };
 
     const handleDownloadPdf = () => {
-      // Data to send to the server for PDF generation
       const params = new URLSearchParams({
         name: encodeURIComponent(name),
         group: encodeURIComponent(group),
@@ -470,11 +578,11 @@ const handleSubmit = async () => {
         timeTaken: formatElapsedTimeForDisplay(timeElapsedSeconds),
         percentage: ((score / questions.length) * 100).toFixed(1),
         result: ((score / questions.length) * 100) >= 40 ? 'PASS' : 'FAIL',
-        attempted: getQuestionStats().answered + getQuestionStats().answeredMarked, // Correctly pass attempted count
-        notAttempted: getQuestionStats().notAnswered + getQuestionStats().notVisited + getQuestionStats().review // Correctly pass not attempted count
+        attempted: getQuestionStats().answered + getQuestionStats().answeredMarked,
+        notAttempted: getQuestionStats().notAnswered + getQuestionStats().notVisited + getQuestionStats().review,
+        attemptId: attemptId // Include attempt ID in PDF
       }).toString();
 
-      // Directly open the API route in a new tab to trigger download
       try {
         window.open(`/api/generate-pdf?${params}`, '_blank');
       } catch (error) {
@@ -483,75 +591,105 @@ const handleSubmit = async () => {
       }
     };
 
-
     return (
-      <div className="min-h-screen bg-gray-100 py-6 sm:py-12 flex items-center justify-center">
-        <div className="max-w-xs sm:max-w-md md:max-w-xl lg:max-w-4xl w-full mx-auto px-2 sm:px-4">
-          <div id="result-summary" className="bg-white rounded-lg shadow-lg p-4 sm:p-8">
-            <h2 className="text-xl sm:text-3xl font-bold text-center mb-4 sm:mb-8 text-gray-800">
-              📊 Quiz Results
-            </h2>
+     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 sm:p-6 md:p-8">
+      <div className="max-w-xs sm:max-w-md md:max-w-xl lg:max-w-4xl w-full mx-auto">
+        <div id="result-summary" className="bg-white rounded-xl shadow-2xl p-6 sm:p-10 md:p-12 border border-gray-200">
+          <h2 className="text-2xl sm:text-4xl font-extrabold text-center mb-6 sm:mb-10 text-gray-800 tracking-tight">
+            📊 Quiz Results
+          </h2>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
-              <div className="text-center p-3 sm:p-6 bg-blue-50 rounded-lg">
-                <div className="text-2xl sm:text-3xl font-bold text-blue-600 mb-1 sm:mb-2">{score}</div>
-                <div className="text-xs sm:text-sm text-gray-600">Correct Answers</div>
-              </div>
-
-              <div className="text-center p-3 sm:p-6 bg-green-50 rounded-lg">
-                <div className="text-2xl sm:text-3xl font-bold text-green-600 mb-1 sm:mb-2">
-                  {((score / questions.length) * 100).toFixed(1)}%
-                </div>
-                <div className="text-xs sm:text-sm text-gray-600">Percentage</div>
-              </div>
-
-              <div className="text-center p-3 sm:p-6 bg-purple-50 rounded-lg">
-                <div className="text-2xl sm:text-3xl font-bold text-purple-600 mb-1 sm:mb-2">
-                  {getQuestionStats().answered + getQuestionStats().answeredMarked}
-                </div>
-                <div className="text-xs sm:text-sm text-gray-600">Attempted</div>
-              </div>
-
-              <div className="text-center p-3 sm:p-6 bg-orange-50 rounded-lg">
-                <div className="text-2xl sm:text-3xl font-bold text-orange-600 mb-1 sm:mb-2">
-                  {questions.length - (getQuestionStats().answered + getQuestionStats().answeredMarked)}
-                </div>
-                <div className="text-xs sm:text-sm text-gray-600">Not Attempted</div>
-              </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8 mb-8 sm:mb-12">
+            {/* Correct Answers */}
+            <div className="flex flex-col items-center justify-center p-4 sm:p-7 bg-blue-50 rounded-xl shadow-md transform hover:scale-105 transition-transform duration-200 ease-in-out border border-blue-100">
+              <div className="text-3xl sm:text-4xl font-extrabold text-blue-700 mb-1 sm:mb-2 leading-none">{score}</div>
+              <div className="text-sm sm:text-base text-gray-700 font-medium text-center">Correct Answers</div>
             </div>
 
-            <div className="text-center mb-6 sm:mb-8">
-              <div className={`text-3xl sm:text-4xl font-bold mb-2 sm:mb-4 ${
-                ((score / questions.length) * 100) >= 40 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                {((score / questions.length) * 100) >= 40 ? '✅ PASS' : '❌ FAIL'}
+            {/* Percentage */}
+            <div className="flex flex-col items-center justify-center p-4 sm:p-7 bg-green-50 rounded-xl shadow-md transform hover:scale-105 transition-transform duration-200 ease-in-out border border-green-100">
+              <div className="text-3xl sm:text-4xl font-extrabold text-green-700 mb-1 sm:mb-2 leading-none">
+                {((score / questions.length) * 100).toFixed(1)}%
               </div>
-              <div className="text-base sm:text-lg text-gray-600">
-                Time Taken: {formatElapsedTimeForDisplay(timeElapsedSeconds)}
-              </div>
-              <div className="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-2">
-                Candidate: {name} | Test: {decodeURIComponent(group)} - {decodeURIComponent(test)}
-              </div>
+              <div className="text-sm sm:text-base text-gray-700 font-medium text-center">Percentage</div>
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-center mt-4 sm:mt-6 space-y-3 sm:space-y-0 sm:space-x-4">
-              <button
-                onClick={handleDownloadPdf}
-                className="bg-green-500 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-md hover:bg-green-600 transition-colors text-sm sm:text-base"
-              >
-                📥 Download Results PDF
-              </button>
-
-              <button
-                onClick={() => router.replace("/")}
-                className="bg-blue-500 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-md hover:bg-blue-600 transition-colors text-sm sm:text-base"
-              >
-                Back to Home
-              </button>
+            {/* Attempted */}
+            <div className="flex flex-col items-center justify-center p-4 sm:p-7 bg-purple-50 rounded-xl shadow-md transform hover:scale-105 transition-transform duration-200 ease-in-out border border-purple-100">
+              <div className="text-3xl sm:text-4xl font-extrabold text-purple-700 mb-1 sm:mb-2 leading-none">
+                {getQuestionStats().answered + getQuestionStats().answeredMarked}
+              </div>
+              <div className="text-sm sm:text-base text-gray-700 font-medium text-center">Attempted</div>
             </div>
+
+            {/* Not Attempted */}
+            <div className="flex flex-col items-center justify-center p-4 sm:p-7 bg-orange-50 rounded-xl shadow-md transform hover:scale-105 transition-transform duration-200 ease-in-out border border-orange-100">
+              <div className="text-3xl sm:text-4xl font-extrabold text-orange-700 mb-1 sm:mb-2 leading-none">
+                {questions.length - (getQuestionStats().answered + getQuestionStats().answeredMarked)}
+              </div>
+              <div className="text-sm sm:text-base text-gray-700 font-medium text-center">Not Attempted</div>
+            </div>
+          </div>
+
+          <div className="text-center mb-8 sm:mb-10">
+            <div className={`text-4xl sm:text-5xl font-extrabold mb-3 sm:mb-5 tracking-tight ${
+              ((score / questions.length) * 100) >= 40 ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {((score / questions.length) * 100) >= 40 ? '✅ PASS' : '❌ FAIL'}
+            </div>
+            <div className="text-base sm:text-lg text-gray-700 mb-2 font-semibold">
+              Time Taken: {formatElapsedTimeForDisplay(timeElapsedSeconds)}
+            </div>
+            <div className="text-sm sm:text-base text-gray-600">
+              Candidate: <span className="font-medium">{name}</span> | Test: <span className="font-medium">{decodeURIComponent(group)}</span> - <span className="font-medium">{decodeURIComponent(test)}</span>
+            </div>
+            <div className="text-xs sm:text-sm text-gray-500 mt-2">
+              Attempt ID: <span className="font-mono text-gray-600">{attemptId}</span>
+            </div>
+          </div>
+       {/* New line/button to scroll to ResponseSheet */}
+          <div className="text-center mt-6 sm:mt-8">
+            <button
+              onClick={scrollToResponseSheet}
+              className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200 text-base sm:text-lg font-semibold border-b-2 border-blue-600 hover:border-blue-800 pb-1"
+            >
+              View Detailed Response Sheet 👇
+            </button>
+          </div>
+          <div className="flex flex-col sm:flex-row justify-center mt-6 sm:mt-8 space-y-4 sm:space-y-0 sm:space-x-5">
+            <button
+              onClick={handleDownloadPdf}
+              className="bg-green-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg hover:bg-green-700 transition-colors duration-200 ease-in-out text-base sm:text-lg font-semibold shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
+            >
+              📥 Download Results PDF
+            </button>
+
+            <button
+              onClick={() => router.replace("/")}
+              className="bg-blue-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg hover:bg-blue-700 transition-colors duration-200 ease-in-out text-base sm:text-lg font-semibold shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+            >
+              🏠 Back to Home
+            </button>
+          </div>
+
+   
+
+
+          {/* 3. Attach the ref to the ResponseSheet component's container/wrapper */}
+          <div ref={responseSheetRef}>
+            <ResponseSheet
+              username={name}
+              group={group}
+              test={test}
+              questions={questions}
+              attemptId={attemptId}
+              currentAttemptResponses={currentAttemptResponses}
+            />
           </div>
         </div>
       </div>
+    </div>
+
     );
   }
 
