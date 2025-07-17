@@ -138,7 +138,7 @@ export default function Home() {
                   మా ప్లాట్‌ఫారమ్‌ను ఉచిత <strong className="text-yellow-300">నమూనా క్విజ్‌తో</strong> అనుభవించండి. లాగిన్ అవసరం లేదు!
                 </p>
               </div>
-              <Link href='/Samplequiz' passHref>
+              <Link href='/Sampletestsavailable' passHref>
                 <button className="group bg-white text-purple-700 hover:bg-purple-50 px-6 sm:px-8 py-3 sm:py-4 rounded-2xl font-bold text-sm sm:text-base shadow-xl hover:shadow-2xl transform hover:scale-105 active:scale-95 transition-all duration-300">
                   <span className="flex items-center gap-2">
                     (Start Demo)

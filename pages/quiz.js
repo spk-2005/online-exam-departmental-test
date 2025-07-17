@@ -677,14 +677,13 @@ const handleSubmit = async () => {
 
           {/* 3. Attach the ref to the ResponseSheet component's container/wrapper */}
           <div ref={responseSheetRef}>
-            <ResponseSheet
-  username={name}
-  group={group}
-  test={test}
-  questions={questions || []} // Add a fallback empty array
-  attemptId={attemptId}
-  currentAttemptResponses={currentAttemptResponses}
-/>
+               
+<div ref={responseSheetRef}>
+  <ResponseSheet
+    questions={questions}
+    selectedOptions={selectedOption}
+  />
+</div>
           </div>
         </div>
       </div>

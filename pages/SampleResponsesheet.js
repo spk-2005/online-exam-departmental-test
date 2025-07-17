@@ -1,6 +1,7 @@
+// components/SampleResponseSheet.js
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
-const ResponseSheet = ({ 
+const SampleResponseSheet = ({ 
   questions: propQuestions = [], 
   selectedOptions = {} // Current selected options from quiz
 }) => {
@@ -241,4 +242,4 @@ const ResponseSheet = ({
   );
 };
 
-export default ResponseSheet;
+export default SampleResponseSheet;
