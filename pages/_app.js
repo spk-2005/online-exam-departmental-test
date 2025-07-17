@@ -1,11 +1,10 @@
-import "@/styles/globals.css";
-import '@/styles/instructioins.css'; // adjust your css import path accordingly
+// pages/_app.js
 import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { initGA, logPageView } from "../lib/ga";
-export default function App({ Component, pageProps }) {
 
-    const router = useRouter();
+function App({ Component, pageProps }) {
+  const router = useRouter();
 
   useEffect(() => {
     initGA();
@@ -16,5 +15,8 @@ export default function App({ Component, pageProps }) {
       router.events.off("routeChangeComplete", logPageView);
     };
   }, [router.events]);
+
   return <Component {...pageProps} />;
 }
+
+export default App;
