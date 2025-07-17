@@ -1,11 +1,17 @@
-// pages/_app.js
+
+
 import Script from "next/script";
 
-function App({ Component, pageProps }) {
-  return (
-    <>
-      {/* Google Analytics (replace G-XXXXXXX with your actual Measurement ID) */}
-      <Script
+import "@/styles/globals.css";
+import '@/styles/instructioins.css'; // adjust your css import path accordingly
+export default function App({ Component, pageProps }) {
+
+
+
+
+  return (<>
+  
+  <Script
         strategy="afterInteractive"
         src="https://www.googletagmanager.com/gtag/js?id=G-5194FX0QZR"
       />
@@ -23,9 +29,6 @@ function App({ Component, pageProps }) {
           `,
         }}
       />
-      <Component {...pageProps} />
-    </>
-  );
-}
 
-export default App;
+  <Component {...pageProps} /></>);
+}
