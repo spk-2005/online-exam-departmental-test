@@ -413,9 +413,7 @@ const handleSubmit = () => {
             <div className="text-sm sm:text-base text-gray-600">
               Candidate: <span className="font-medium">{name}</span> | Test: <span className="font-medium">{decodeURIComponent(group)}</span> - <span className="font-medium">{decodeURIComponent(test)}</span>
             </div>
-            <div className="text-xs sm:text-sm text-gray-500 mt-2">
-              Attempt ID: <span className="font-mono text-gray-600">{attemptId}</span>
-            </div>
+           
           </div>
        {/* New line/button to scroll to ResponseSheet */}
           <div className="text-center mt-6 sm:mt-8">
