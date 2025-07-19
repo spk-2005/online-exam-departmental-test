@@ -23,16 +23,17 @@ export default function Login() {
       });
 
       const data = await res.json();
-      
+
       if (res.ok) {
         // Store user data, session info, and auth token
         localStorage.setItem("username", username);
+        localStorage.setItem("name", data.user.name); // ⭐⭐⭐ Store the user's name ⭐⭐⭐
         localStorage.setItem("isAuthenticated", "true");
         localStorage.setItem("loginTime", Date.now().toString());
         localStorage.setItem("auth-token", data.token); // Store the token
-        
+
         setMessage("✅ Login successful!");
-        
+
         // Redirect to intended page or dashboard
         const redirectTo = router.query.redirect || "/dashboard";
         router.push(redirectTo);
@@ -49,7 +50,7 @@ export default function Login() {
 
   return (
     <div className={styles.container}>
-      
+
       <h2 className={styles.title}>Login</h2>
       {message && (
         <div className={`${styles.message} ${message.includes('✅') ? styles.messageSuccess : styles.messageError}`}>
@@ -81,7 +82,7 @@ export default function Login() {
             autoComplete="current-password"
           />
         </div>
-        <button 
+        <button
           type="submit"
           className={`${styles.button} ${isLoading ? styles.loading : ''}`}
           disabled={isLoading}
@@ -89,7 +90,7 @@ export default function Login() {
           {isLoading ? 'Logging in...' : 'Login'}
         </button>
       </form>
-      
+
     </div>
   );
 }

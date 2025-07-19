@@ -12,14 +12,19 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [username, setUsername] = useState("");
 
+  
+  const [name, setName] = useState("");
+
   useEffect(() => {
     const checkAuth = () => {
       try {
         if (typeof window !== 'undefined' && window.localStorage) {
           const storedUsername = localStorage.getItem("username");
+          const storedname = localStorage.getItem("name");
+          
           const isAuth = localStorage.getItem("isAuthenticated");
           const loginTime = localStorage.getItem("loginTime");
-
+          
           if (storedUsername && isAuth === "true") {
             const sessionDuration = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
             if (loginTime && Date.now() - parseInt(loginTime) > sessionDuration) {
@@ -28,6 +33,7 @@ export default function Home() {
             } else {
               setIsAuthenticated(true);
               setUsername(storedUsername);
+              setName(storedname);
             }
           }
         }
@@ -44,7 +50,7 @@ export default function Home() {
 
   const clearAuthData = () => {
     if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.removeItem("username");
+      localStorage.removeItem("username");      localStorage.removeItem("name");
       localStorage.removeItem("isAuthenticated");
       localStorage.removeItem("loginTime");
       localStorage.removeItem("auth-token");
@@ -81,7 +87,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
               <div className="text-center sm:text-left">
                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">
-                  Welcome back, <span className="text-yellow-300 font-extrabold">{username}!</span>
+                  Welcome back, <span className="text-yellow-300 font-extrabold">{name}!</span>
                 </h1>
                 <p className="mt-1 text-blue-100 text-xs sm:text-sm opacity-90">
                   మీ పరీక్షలను జయించడానికి సిద్ధంగా ఉన్నారా? 🚀

@@ -8,6 +8,7 @@ export default function Dashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [username, setUsername] = useState("");
+  const [name,setName]=useState("");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
 
@@ -17,7 +18,7 @@ export default function Dashboard() {
         const storedUsername = localStorage.getItem("username");
         const isAuth = localStorage.getItem("isAuthenticated");
         const loginTime = localStorage.getItem("loginTime");
-
+        const storedName=localStorage.getItem("name");
         if (!storedUsername || !isAuth || isAuth !== "true") {
           router.push("/");
           return;
@@ -29,15 +30,18 @@ export default function Dashboard() {
           localStorage.removeItem("username");
           localStorage.removeItem("isAuthenticated");
           localStorage.removeItem("loginTime");
+          localStorage.removeItem("name");
           router.push("/login");
           return;
         }
 
         setUsername(storedUsername);
+        setName(storedName);
         setIsAuthenticated(true);
       } catch (error) {
         console.error("Auth check failed:", error);
         localStorage.removeItem("username");
+        localStorage.removeItem("name");
         localStorage.removeItem("isAuthenticated");
         localStorage.removeItem("loginTime");
         router.push("/login");
@@ -60,6 +64,7 @@ export default function Dashboard() {
       console.error("Logout error:", error);
     } finally {
       localStorage.removeItem("username");
+        localStorage.removeItem("name");
       localStorage.removeItem("isAuthenticated");
       localStorage.removeItem("loginTime");
       localStorage.removeItem("auth-token");
@@ -92,7 +97,7 @@ export default function Dashboard() {
         <div style={styles.headerContent}>
           <div style={styles.welcomeSection}>
             <h1 style={styles.title}>Dashboard</h1>
-            <p style={styles.welcomeText}>Welcome back, {username}!</p>
+            <p style={styles.welcomeText}>Welcome back, {name}!</p>
           </div>
           <button
             onClick={handleLogout}
