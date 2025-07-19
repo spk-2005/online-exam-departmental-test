@@ -37,30 +37,27 @@ export default function PaymentRedirect() {
 
     return (
         <div className="max-w-4xl mx-auto my-8 p-6 sm:p-3 bg-white rounded-2xl  border border-gray-100">
-
-            {/* Marquee with Blinking Payment Verification Button (Mobile Only) */}
-            {/* Added 'lg:hidden' to hide on large screens */}
-            <div className="lg:hidden overflow-hidden bg-gradient-to-r from-blue-50 to-white py-4 mb-8 border border-blue-200 rounded-lg shadow-inner relative">
-                <div className="absolute top-0 left-0 h-full w-full animate-marquee whitespace-nowrap flex items-center justify-center">
-
-                    {/* Replicated Button for Marquee */}
-                    <button
-                        onClick={handleProceedToFormMobile}
-                        className="inline-flex items-center justify-center px-6 py-2 rounded-xl font-bold text-base sm:text-lg
-                                bg-gradient-to-r from-blue-600 to-blue-800 shadow-lg
-                                hover:from-blue-700 hover:to-blue-900 transform transition-all duration-300
-                                focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-offset-2"
-                    >
-                        {/* Blinking text with underline */}
-                        <span className="flex items-center underline animate-color-blink text-white">
-                            <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            మీ పేమెంట్‌ని నిర్ధారించడానికి ఇక్కడ క్లిక్ చేయండి
-                        </span>
-                    </button>
-                </div>
-            </div>
+{/* Marquee with Clear Payment Verification Button (Mobile Only) */}
+<div className="lg:hidden overflow-hidden py-6 mb-8 relative">
+    <div className="absolute top-0 left-0 h-full w-full animate-marquee whitespace-nowrap flex items-center justify-center">
+        {/* Clean Button without Background */}
+        <button
+            onClick={handleProceedToFormMobile}
+            className="inline-flex items-center justify-center px-8 py-3 font-bold text-lg
+                    text-blue-700 hover:text-blue-900 transform transition-all duration-300
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-lg
+                    border-2 border-blue-600 hover:border-blue-800 bg-transparent hover:bg-blue-50"
+        >
+            {/* Clear text with icon */}
+            <span className="flex items-center animate-pulse">
+                <svg className="w-6 h-6 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                మీ పేమెంట్‌ని నిర్ధారించడానికి ఇక్కడ క్లిక్ చేయండి
+            </span>
+        </button>
+    </div>
+</div>
 
             <div className="text-center mb-8">
                 <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">

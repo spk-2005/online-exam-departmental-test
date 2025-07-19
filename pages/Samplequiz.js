@@ -415,7 +415,6 @@ const handleSubmit = () => {
             </div>
            
           </div>
-       {/* New line/button to scroll to ResponseSheet */}
           <div className="text-center mt-6 sm:mt-8">
             <button
               onClick={scrollToResponseSheet}
