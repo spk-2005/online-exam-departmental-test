@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 export default function AvailableTests() {
   const [attemptsData, setAttemptsData] = useState([]);
   const [username, setUsername] = useState("");
+  const [Name, setName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -12,13 +13,14 @@ export default function AvailableTests() {
   // Effect to check authentication and set username on component mount
   useEffect(() => {
     const storedUsername = localStorage.getItem("username");
+    const storedName = localStorage.getItem("name");
     const isAuthenticated = localStorage.getItem("isAuthenticated");
 
     if (!storedUsername || isAuthenticated !== "true") {
       router.push("/login");
       return;
     }
-
+    setName(storedName);
     setUsername(storedUsername);
   }, [router]);
 
@@ -47,6 +49,7 @@ export default function AvailableTests() {
         if (res.status === 401) {
           // Authentication failed or session expired
           localStorage.removeItem("username");
+          localStorage.removeItem("name");
           localStorage.removeItem("isAuthenticated");
           localStorage.removeItem("loginTime");
           router.push("/login");
@@ -132,10 +135,10 @@ export default function AvailableTests() {
             📚 అందుబాటులో ఉన్న పరీక్షలు
           </h2>
           <p className="text-gray-600 text-lg transition-opacity duration-300">
-            Welcome back, <span className="font-semibold text-gray-900">{username}</span>! Choose a test to begin.
+            Welcome back, <span className="font-semibold text-gray-900">{Name}</span>! Choose a test to begin.
           </p>
           <p className="text-gray-600 text-lg mt-2">
-            <span className="font-semibold text-gray-900">{username}</span> గారు, తిరిగి స్వాగతం! పరీక్షను ఎంచుకోండి.
+            <span className="font-semibold text-gray-900">{Name}</span> గారు, తిరిగి స్వాగతం! పరీక్షను ఎంచుకోండి.
           </p>
         </div>
 

@@ -6,13 +6,16 @@ export default function Instruction() {
   const [shownext, setShownext] = useState(true);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [name, setName] = useState('');
+  const [RealName,setRealName]=useState('');
   const router = useRouter();
   const { group, test } = router.query;
 
   useEffect(() => {
     const storedName = localStorage.getItem('username') || router.query.name || 'Test User';
+    const storedRealName = localStorage.getItem('name') || router.query.name || 'Test User';
     console.log(storedName);
     setName(storedName);
+    setRealName(storedRealName);
   }, [router.query.name]);
 
   const handleCheckboxChange = (e) => {
@@ -22,6 +25,7 @@ export default function Instruction() {
 const handleOK = () => {
   if (isConfirmed) {
     localStorage.setItem("username", name);
+    localStorage.setItem("name", RealName);
     localStorage.setItem("quizGroup", group);
     console.log(name);
     localStorage.setItem("quizTest", test);
@@ -183,7 +187,7 @@ const handleOK = () => {
                     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-800">{name}</h2>
+                <h2 className="text-2xl font-bold text-gray-800">{RealName}</h2>
                 <p className="text-gray-600 mt-2">Test: {test}</p>
                 <p className="text-gray-600">Group: {group}</p>
               </div>

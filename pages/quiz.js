@@ -88,6 +88,7 @@ export default function Quiz() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [name, setName] = useState('Test User');
+  const [Realname, setRealName] = useState('Test User');
   const [isClient, setIsClient] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [questionPaperOpen, setQuestionPaperOpen] = useState(false);
@@ -110,10 +111,18 @@ export default function Quiz() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedUsername = localStorage.getItem('username');
+      const storedRealname = localStorage.getItem('name');
       const queryName = router.query.name;
 
       if (storedUsername) {
         setName(storedUsername);
+      } else if (queryName) {
+        setName(queryName);
+      } else {
+        setName('Test User');
+      }  
+      if (storedRealname) {
+        setName(storedRealname);
       } else if (queryName) {
         setName(queryName);
       } else {
@@ -641,7 +650,7 @@ const handleSubmit = async () => {
               Time Taken: {formatElapsedTimeForDisplay(timeElapsedSeconds)}
             </div>
             <div className="text-sm sm:text-base text-gray-600">
-              Candidate: <span className="font-medium">{name}</span> | Test: <span className="font-medium">{decodeURIComponent(group)}</span> - <span className="font-medium">{decodeURIComponent(test)}</span>
+              Candidate: <span className="font-medium">{Realname}</span> | Test: <span className="font-medium">{decodeURIComponent(group)}</span> - <span className="font-medium">{decodeURIComponent(test)}</span>
             </div>
            
           </div>
