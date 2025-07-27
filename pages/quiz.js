@@ -6,25 +6,115 @@ import ResponseSheet from "./Responsesheet";
 export default function Quiz() {
   const router = useRouter();
   
+  const [questions, setQuestions] = useState([]);
+  const [showSummary, setShowSummary] = useState(false);
   // Generate unique attempt ID when component mounts
   const [attemptId] = useState(() => `attempt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const [attemptStartTime] = useState(() => new Date().toISOString());
   
+  // Add state for submission status
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionMessage, setSubmissionMessage] = useState("");
+
+  // Simple refresh prevention for results page only
   useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      e.preventDefault();
-      e.returnValue = "";
+    if (!showSummary) return;
+
+    let redirected = false;
+
+    // Prevent refresh shortcuts only
+    const preventRefreshShortcuts = (e) => {
+      if (redirected) return;
+
+      // F5 (refresh)
+      if (e.keyCode === 116) {
+        e.preventDefault();
+        e.stopPropagation();
+        redirected = true;
+        alert("Page refresh is disabled on results page. Redirecting to home...");
+        window.location.replace("/");
+        return false;
+      }
+      
+      // Ctrl+R (refresh)
+      if (e.ctrlKey && e.keyCode === 82) {
+        e.preventDefault();
+        e.stopPropagation();
+        redirected = true;
+        alert("Page refresh is disabled on results page. Redirecting to home...");
+        window.location.replace("/");
+        return false;
+      }
+      
+      // Ctrl+F5 (hard refresh)
+      if (e.ctrlKey && e.keyCode === 116) {
+        e.preventDefault();
+        e.stopPropagation();
+        redirected = true;
+        alert("Page refresh is disabled on results page. Redirecting to home...");
+        window.location.replace("/");
+        return false;
+      }
     };
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
+    // Prevent refresh via beforeunload
+    const preventRefresh = (e) => {
+      if (redirected) return;
+      
+      e.preventDefault();
+      e.returnValue = "";
+      
+      // Redirect to home after preventing refresh
+      setTimeout(() => {
+        if (!redirected) {
+          redirected = true;
+          window.location.replace("/");
+        }
+      }, 100);
+      
+      return "";
+    };
+
+    // Add event listeners for refresh prevention only
+    document.addEventListener("keydown", preventRefreshShortcuts, { capture: true });
+    window.addEventListener("beforeunload", preventRefresh, { capture: true });
+
+    // Cleanup function
+    return () => {
+      redirected = true;
+      document.removeEventListener("keydown", preventRefreshShortcuts, { capture: true });
+      window.removeEventListener("beforeunload", preventRefresh, { capture: true });
+    };
+  }, [showSummary]);
+
+  // Original beforeunload for quiz in progress
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      // Only show warning during active quiz, not on results page
+      if (questions.length > 0 && !showSummary && !isSubmitting) {
+        e.preventDefault();
+        e.returnValue = "Your quiz progress will be lost if you leave this page.";
+        return "Your quiz progress will be lost if you leave this page.";
+      }
+    };
+
+    // Only add this listener when NOT on results page
+    if (!showSummary) {
+      window.addEventListener("beforeunload", handleBeforeUnload);
+    }
+    
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, []);
+  }, [questions.length, showSummary, isSubmitting]);
 
+  // Back button handling during quiz (not results)
   useEffect(() => {
+    if (showSummary) return; // Don't handle back button on results page
+
     const handleBackButton = (event) => {
       event.preventDefault();
+      
       const confirmLeave = window.confirm(
         "If you go back, you'll lose your attempt. Are you sure you want to leave?"
       );
@@ -42,7 +132,18 @@ export default function Quiz() {
     return () => {
       window.removeEventListener("popstate", handleBackButton);
     };
-  }, [router]);
+  }, [router, showSummary]);
+
+  const redirectToHome = () => {
+    // Clear any stored quiz data
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('quizGroup');
+      localStorage.removeItem('quizTest');
+    }
+    
+    // Force redirect to home
+    window.location.replace("/");
+  };
 
   const [group, setGroup] = useState("");
   const [test, setTest] = useState("");
@@ -76,13 +177,13 @@ export default function Quiz() {
     }
   }, [router]);
 
-  const [questions, setQuestions] = useState([]);
+  const QUIZ_DURATION = 10; // 10 seconds for testing (change to 7200 for 2 hours)
+
   const [index, setIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState({});
   const [markedQuestions, setMarkedQuestions] = useState({});
   const [status, setStatus] = useState({});
-  const [timer, setTimer] = useState(7200);
-  const [showSummary, setShowSummary] = useState(false);
+  const [timer, setTimer] = useState(QUIZ_DURATION);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -93,16 +194,15 @@ export default function Quiz() {
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [questionPaperOpen, setQuestionPaperOpen] = useState(false);
   const [instructionOpen, setInstructionOpen] = useState(false);
-  const [currentAttemptResponses, setCurrentAttemptResponses] = useState([]); // Store current attempt responses
+  const [currentAttemptResponses, setCurrentAttemptResponses] = useState([]);
 
-    const responseSheetRef = useRef(null);
- const scrollToResponseSheet = () => {
+  const responseSheetRef = useRef(null);
+  
+  const scrollToResponseSheet = () => {
     if (responseSheetRef.current) {
       responseSheetRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
-
-
 
   useEffect(() => {
     setIsClient(true);
@@ -122,11 +222,11 @@ export default function Quiz() {
         setName('Test User');
       }  
       if (storedRealname) {
-        setName(storedRealname);
+        setRealName(storedRealname);
       } else if (queryName) {
-        setName(queryName);
+        setRealName(queryName);
       } else {
-        setName('Test User');
+        setRealName('Test User');
       }
     }
   }, [router.query.name, router.isReady]);
@@ -136,6 +236,18 @@ export default function Quiz() {
       fetchQuestions();
     }
   }, [router.isReady, group, test]);
+
+  // Debug function to inspect question format
+  useEffect(() => {
+    if (questions.length > 0) {
+      console.log('=== DEBUGGING QUESTION FORMAT ===');
+      console.log('First question:', questions[0]);
+      console.log('Correct answer field:', questions[0].correct);
+      console.log('Type of correct field:', typeof questions[0].correct);
+      console.log('Options array:', questions[0].options);
+      console.log('=== END DEBUG ===');
+    }
+  }, [questions]);
 
   const fetchQuestions = async () => {
     try {
@@ -204,18 +316,60 @@ export default function Quiz() {
     }
   };
 
+  // Timer useEffect
   useEffect(() => {
-    if (questions.length === 0) return;
+    if (questions.length === 0 || showSummary || isSubmitting) {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      return;
+    }
 
-    if (!timerIntervalRef.current && !showSummary) {
+    if (!timerIntervalRef.current) {
       timerIntervalRef.current = setInterval(() => {
         setTimer(prev => {
-          if (prev <= 0) {
+          if (prev <= 1) {
             clearInterval(timerIntervalRef.current);
             timerIntervalRef.current = null;
-            handleSubmit();
+            
+            // Auto-submit when time expires
+            setTimeout(() => {
+              setSubmissionMessage("Time's up! Auto-submitting your quiz...");
+              setIsSubmitting(true);
+              
+              // Update current question status before calling handleSubmit
+              setStatus(prevStatus => {
+                const updatedStatus = { ...prevStatus };
+                
+                if (selectedOption[index]) {
+                  if (markedQuestions[index]) {
+                    updatedStatus[index] = "answered-marked";
+                  } else {
+                    updatedStatus[index] = "answered";
+                  }
+                } else if (prevStatus[index] === 'not-visited') {
+                  updatedStatus[index] = "not-answered";
+                }
+                
+                setTimeout(() => {
+                  handleSubmit(true);
+                }, 100);
+                
+                return updatedStatus;
+              });
+            }, 0);
+            
             return 0;
           }
+          
+          if (prev === 300) {
+            alert("⚠️ Warning: Only 5 minutes remaining!");
+          }
+          if (prev === 60) {
+            alert("⚠️ Final Warning: Only 1 minute remaining!");
+          }
+          
           return prev - 1;
         });
       }, 1000);
@@ -224,38 +378,10 @@ export default function Quiz() {
     return () => {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
       }
     };
-  }, [questions.length, showSummary]);
-
-  useEffect(() => {
-    if (!showSummary) return;
-
-    const handlePopState = (e) => {
-      e.preventDefault();
-      router.replace("/");
-    };
-
-    window.history.pushState(null, null, window.location.href);
-    window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-    };
-  }, [showSummary, router]);
-
-  useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      if (questions.length > 0 && !showSummary) {
-        e.preventDefault();
-        e.returnValue = "";
-        return "";
-      }
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [questions.length, showSummary]);
+  }, [questions.length, showSummary, isSubmitting, index, selectedOption, markedQuestions]);
 
   const handleOptionChange = (val) => {
     setSelectedOption(prev => ({ ...prev, [index]: val }));
@@ -300,20 +426,57 @@ export default function Quiz() {
     }
     setIndex(questionIndex);
   };
-// Inside your Quiz.js component
 
-const handleSubmit = async () => {
-    // Clear the timer immediately upon submission
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
-      timerIntervalRef.current = null;
+  const handleSubmit = async (isAutoSubmit = false) => {
+    // Prevent multiple submissions
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
+    
+    // Update submission message based on submit type
+    if (isAutoSubmit) {
+      setSubmissionMessage("Auto-submitting quiz due to time expiry...");
+    } else {
+      setSubmissionMessage("Submitting your quiz...");
     }
 
     try {
+      // Clear the timer immediately upon submission
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+
+      // Get current state values at submission time
+      let currentStatus = { ...status };
+      const currentSelectedOptions = { ...selectedOption };
+      const currentMarkedQuestions = { ...markedQuestions };
+      
+      // Update current question status
+      if (currentSelectedOptions[index]) {
+        if (currentMarkedQuestions[index]) {
+          currentStatus[index] = "answered-marked";
+        } else {
+          currentStatus[index] = "answered";
+        }
+      } else if (currentStatus[index] === 'not-visited' || !currentStatus[index]) {
+        currentStatus[index] = "not-answered";
+      }
+
+      // Ensure all questions have a status
+      questions.forEach((_, i) => {
+        if (!currentStatus[i]) {
+          if (currentSelectedOptions[i]) {
+            currentStatus[i] = currentMarkedQuestions[i] ? "answered-marked" : "answered";
+          } else {
+            currentStatus[i] = "not-visited";
+          }
+        }
+      });
+
       // Calculate time elapsed for this specific attempt
-      const totalQuizDuration = 7200; // Total duration in seconds (2 hours)
-      const timeElapsedSeconds = totalQuizDuration - timer; // 'timer' counts down, so this is time taken
-      const attemptEndTime = new Date().toISOString(); // End time for this specific attempt
+      const timeElapsedSeconds = QUIZ_DURATION - timer;
+      const attemptEndTime = new Date().toISOString();
 
       // Format time taken for display and storage
       const hoursTaken = Math.floor(timeElapsedSeconds / 3600);
@@ -323,9 +486,9 @@ const handleSubmit = async () => {
 
       let scoreCalc = 0;
       let attemptedCount = 0;
-      const responses = []; // Array to hold individual question responses for this attempt
+      const responses = [];
 
-      // Get current date and time in Indian timezone for consistent storage
+      // Get current date and time in Indian timezone
       const currentDateTime = new Date();
       const indianDate = currentDateTime.toLocaleDateString('en-IN', {
         timeZone: 'Asia/Kolkata',
@@ -341,14 +504,48 @@ const handleSubmit = async () => {
         second: '2-digit'
       });
 
-      // Iterate through questions to calculate score and prepare response data
+      // Enhanced correct answer detection function
+      const getCorrectAnswer = (question) => {
+        let correctAnswer;
+        let correctOption = question.correct;
+        
+        if (typeof question.correct === 'string') {
+          if (question.correct.length === 1 && /[A-Da-d]/.test(question.correct)) {
+            const optionIndex = question.correct.toUpperCase().charCodeAt(0) - 65;
+            if (optionIndex >= 0 && optionIndex < question.options.length) {
+              correctAnswer = question.options[optionIndex];
+            }
+          } else if (question.options.includes(question.correct)) {
+            correctAnswer = question.correct;
+          } else if (!isNaN(question.correct) && parseInt(question.correct) < question.options.length) {
+            const optionIndex = parseInt(question.correct);
+            correctAnswer = question.options[optionIndex];
+            correctOption = String.fromCharCode(65 + optionIndex);
+          }
+        } else if (typeof question.correct === 'number' && question.correct < question.options.length) {
+          correctAnswer = question.options[question.correct];
+          correctOption = String.fromCharCode(65 + question.correct);
+        }
+        
+        if (!correctAnswer) {
+          console.warn(`Could not determine correct answer for question:`, question);
+          correctAnswer = question.options[0];
+          correctOption = 'A';
+        }
+        
+        return { correctAnswer, correctOption };
+      };
+
+      // Calculate score and prepare response data
       questions.forEach((q, i) => {
-        const selectedAnswer = selectedOption[i];
-        const correctAnswer = q.options[q.correct.charCodeAt(0) - 65];
+        const selectedAnswer = currentSelectedOptions[i];
+        
+        const { correctAnswer, correctOption } = getCorrectAnswer(q);
+        
         const isAnswered = selectedAnswer !== undefined;
         const isCorrect = isAnswered && selectedAnswer === correctAnswer;
-        const isMarkedForReview = markedQuestions[i] || false;
-        const questionStatus = status[i] || 'not-visited';
+        const isMarkedForReview = currentMarkedQuestions[i] || false;
+        const questionStatus = currentStatus[i] || 'not-visited';
 
         if (isAnswered) {
           attemptedCount++;
@@ -358,48 +555,43 @@ const handleSubmit = async () => {
         }
 
         const responseData = {
-          attemptId: attemptId, // CRITICAL: Link each response to the unique attempt ID
-          username: localStorage.getItem('username') || name, // Ensure username is captured
+          attemptId: attemptId,
+          username: localStorage.getItem('username') || name,
           group: decodeURIComponent(group),
           test: decodeURIComponent(test),
-          questionId: q._id || q.id, // Use _id if from MongoDB, otherwise a unique ID
+          questionId: q._id || q.id,
           questionNumber: i + 1,
           questionText: q.question,
           options: q.options,
           correctAnswer: correctAnswer,
-          correctOption: q.correct,
-          selectedOption: selectedAnswer || null, // Store selected option (or null if not selected)
+          correctOption: correctOption,
+          selectedOption: selectedAnswer || null,
           isCorrect: isCorrect,
           markedForReview: isMarkedForReview,
           status: questionStatus,
           attemptStartTime: attemptStartTime,
-          attemptEndTime: attemptEndTime, // Specific end time for this attempt
-          submittedAt: currentDateTime.toISOString(), // Precise submission time
+          attemptEndTime: attemptEndTime,
+          submittedAt: currentDateTime.toISOString(),
           submittedDate: indianDate,
           submittedTime: indianTime,
           timeTaken: formattedTimeTaken,
           timeElapsed: timeElapsedSeconds,
-          totalQuestions: questions.length, // Include context for the response
+          totalQuestions: questions.length,
           totalScore: scoreCalc,
           totalAttempted: attemptedCount,
-          percentage: ((scoreCalc / questions.length) * 100).toFixed(2)
+          percentage: ((scoreCalc / questions.length) * 100).toFixed(2),
+          isAutoSubmit: isAutoSubmit
         };
         responses.push(responseData);
       });
 
-      // Store current attempt responses in state for the ResponseSheet component
       setCurrentAttemptResponses(responses);
-
-      // Update local state for summary display
       setScore(scoreCalc);
-      setShowSummary(true);
-      setShowSubmitConfirm(false);
+      
+      const actualUsername = localStorage.getItem('username') || name;
 
-      const actualUsername = localStorage.getItem('username') || name; // Get the user's actual name
-
-      // Prepare data for the overall quiz result summary
       const resultData = {
-        attemptId: attemptId, // CRITICAL: Link summary to the unique attempt ID
+        attemptId: attemptId,
         name: actualUsername,
         group: decodeURIComponent(group),
         test: decodeURIComponent(test),
@@ -410,16 +602,17 @@ const handleSubmit = async () => {
         percentage: ((scoreCalc / questions.length) * 100).toFixed(2),
         finalResult: ((scoreCalc / questions.length) * 100) >= 40 ? "PASS" : "FAIL",
         timeTaken: formattedTimeTaken,
-        submittedAt: currentDateTime.toISOString(), // Precise submission time for the summary
+        submittedAt: currentDateTime.toISOString(),
         submittedDate: indianDate,
         submittedTime: indianTime,
         attemptStartTime: attemptStartTime,
-        attemptEndTime: attemptEndTime
+        attemptEndTime: attemptEndTime,
+        isAutoSubmit: isAutoSubmit
       };
 
-      // --- Submission to Backend ---
+      setSubmissionMessage("Saving your results...");
 
-      // 1. Submit overall quiz results
+      // Submit overall quiz results
       const submitResultRes = await fetch("/api/results/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -429,64 +622,63 @@ const handleSubmit = async () => {
       if (!submitResultRes.ok) {
         const errorText = await submitResultRes.text();
         console.error('Failed to submit overall quiz results:', errorText);
-        // TODO: Handle this error more robustly (e.g., show a user-friendly message)
-      } else {
-        const submitResultData = await submitResultRes.json();
-        console.log('Overall quiz results submission response:', submitResultData);
-        if (submitResultData.success) {
-          console.log('✅ Overall quiz results successfully saved');
-        } else {
-          console.log('❌ Overall quiz results were NOT saved');
-          console.log('Reason:', submitResultData.error || 'Unknown');
-        }
+        throw new Error('Failed to save quiz results');
       }
 
-      // 2. Submit individual question responses (response sheet)
-      try {
-        const submitResponsesRes = await fetch("/api/Response/submit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            responses, // Array of individual question responses
-            attemptId: attemptId, // Ensure attemptId is passed for linking
-            metadata: { // Pass all relevant metadata for consistency/redundancy in the responses collection if needed
-              username: actualUsername,
-              group: decodeURIComponent(group),
-              test: decodeURIComponent(test),
-              totalQuestions: questions.length,
-              totalScore: scoreCalc,
-              totalAttempted: attemptedCount,
-              percentage: ((scoreCalc / questions.length) * 100).toFixed(2),
-              finalResult: ((scoreCalc / questions.length) * 100) >= 40 ? "PASS" : "FAIL",
-              submittedAt: currentDateTime.toISOString(), // Ensure submittedAt is passed
-              submittedDate: indianDate,
-              submittedTime: indianTime,
-              timeElapsed: timeElapsedSeconds,
-            }
-          })
-        });
-
-        if (!submitResponsesRes.ok) {
-          const errorText = await submitResponsesRes.text();
-          console.error('Failed to submit individual responses:', errorText);
-          // TODO: Handle this error more robustly
-        } else {
-          const submitResponsesData = await submitResponsesRes.json();
-          console.log('Individual responses submission response:', submitResponsesData);
-          if (submitResponsesData.success) {
-            console.log('✅ Individual responses successfully saved');
-          } else {
-            console.log('❌ Individual responses were NOT saved');
-            console.log('Reason:', submitResponsesData.error || 'Unknown');
+      // Submit individual question responses
+      const submitResponsesRes = await fetch("/api/Response/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          responses,
+          attemptId: attemptId,
+          metadata: {
+            username: actualUsername,
+            group: decodeURIComponent(group),
+            test: decodeURIComponent(test),
+            totalQuestions: questions.length,
+            totalScore: scoreCalc,
+            totalAttempted: attemptedCount,
+            percentage: ((scoreCalc / questions.length) * 100).toFixed(2),
+            finalResult: ((scoreCalc / questions.length) * 100) >= 40 ? "PASS" : "FAIL",
+            submittedAt: currentDateTime.toISOString(),
+            submittedDate: indianDate,
+            submittedTime: indianTime,
+            timeElapsed: timeElapsedSeconds,
+            isAutoSubmit: isAutoSubmit
           }
-        }
-      } catch (err) {
-        console.error('Error submitting individual responses:', err);
+        })
+      });
+
+      if (!submitResponsesRes.ok) {
+        const errorText = await submitResponsesRes.text();
+        console.error('Failed to submit individual responses:', errorText);
+        throw new Error('Failed to save detailed responses');
       }
+
+      // Success - show results
+      setSubmissionMessage("Quiz submitted successfully!");
+      setTimeout(() => {
+        setShowSummary(true);
+        setShowSubmitConfirm(false);
+        setIsSubmitting(false);
+        setSubmissionMessage("");
+      }, 1000);
 
     } catch (err) {
-      console.error('An unexpected error occurred during quiz submission:', err);
-      // TODO: Display a generic error message to the user
+      console.error('An error occurred during quiz submission:', err);
+      setSubmissionMessage(`Submission failed: ${err.message}`);
+      
+      setTimeout(() => {
+        setIsSubmitting(false);
+        setSubmissionMessage("");
+        
+        if (isAutoSubmit) {
+          alert("There was an error saving your quiz, but time has expired. Showing results based on your current progress.");
+          setShowSummary(true);
+          setShowSubmitConfirm(false);
+        }
+      }, 3000);
     }
   };
 
@@ -549,6 +741,24 @@ const handleSubmit = async () => {
     }
   };
 
+  // Show submission overlay when submitting
+  if (isSubmitting) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+        <div className="bg-white rounded-lg p-8 max-w-md w-full mx-auto text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500 mx-auto mb-6"></div>
+          <h2 className="text-xl font-bold mb-4 text-gray-800">
+            {timer <= 0 ? "Time's Up!" : "Submitting Quiz"}
+          </h2>
+          <p className="text-gray-600 mb-4">{submissionMessage}</p>
+          <div className="text-sm text-gray-500">
+            Please wait, do not close this window...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!isClient || !router.isReady) {
     return (
       <div className="flex justify-center items-center h-screen bg-gray-100">
@@ -589,7 +799,7 @@ const handleSubmit = async () => {
         result: ((score / questions.length) * 100) >= 40 ? 'PASS' : 'FAIL',
         attempted: getQuestionStats().answered + getQuestionStats().answeredMarked,
         notAttempted: getQuestionStats().notAnswered + getQuestionStats().notVisited + getQuestionStats().review,
-        attemptId: attemptId // Include attempt ID in PDF
+        attemptId: attemptId
       }).toString();
 
       try {
@@ -601,101 +811,104 @@ const handleSubmit = async () => {
     };
 
     return (
-     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 sm:p-6 md:p-8">
-      <div className="max-w-xs sm:max-w-md md:max-w-xl lg:max-w-4xl w-full mx-auto">
-        <div id="result-summary" className="bg-white rounded-xl shadow-2xl p-6 sm:p-10 md:p-12 border border-gray-200">
-          <h2 className="text-2xl sm:text-4xl font-extrabold text-center mb-6 sm:mb-10 text-gray-800 tracking-tight">
-            📊 Quiz Results
-          </h2>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8 mb-8 sm:mb-12">
-            {/* Correct Answers */}
-            <div className="flex flex-col items-center justify-center p-4 sm:p-7 bg-blue-50 rounded-xl shadow-md transform hover:scale-105 transition-transform duration-200 ease-in-out border border-blue-100">
-              <div className="text-3xl sm:text-4xl font-extrabold text-blue-700 mb-1 sm:mb-2 leading-none">{score}</div>
-              <div className="text-sm sm:text-base text-gray-700 font-medium text-center">Correct Answers</div>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 sm:p-6 md:p-8">
+        <div className="max-w-xs sm:max-w-md md:max-w-xl lg:max-w-4xl w-full mx-auto">
+          <div id="result-summary" className="bg-white rounded-xl shadow-2xl p-6 sm:p-10 md:p-12 border border-gray-200">
+            {/* Results Header with No-Refresh Warning */}
+            <div className="text-center mb-6">
+              
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-gray-800 tracking-tight">
+                📊 Quiz Results
+              </h2>
             </div>
 
-            {/* Percentage */}
-            <div className="flex flex-col items-center justify-center p-4 sm:p-7 bg-green-50 rounded-xl shadow-md transform hover:scale-105 transition-transform duration-200 ease-in-out border border-green-100">
-              <div className="text-3xl sm:text-4xl font-extrabold text-green-700 mb-1 sm:mb-2 leading-none">
-                {((score / questions.length) * 100).toFixed(1)}%
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8 mb-8 sm:mb-12">
+              {/* Results display cards */}
+              <div className="flex flex-col items-center justify-center p-4 sm:p-7 bg-blue-50 rounded-xl shadow-md transform hover:scale-105 transition-transform duration-200 ease-in-out border border-blue-100">
+                <div className="text-3xl sm:text-4xl font-extrabold text-blue-700 mb-1 sm:mb-2 leading-none">{score}</div>
+                <div className="text-sm sm:text-base text-gray-700 font-medium text-center">Correct Answers</div>
               </div>
-              <div className="text-sm sm:text-base text-gray-700 font-medium text-center">Percentage</div>
-            </div>
 
-            {/* Attempted */}
-            <div className="flex flex-col items-center justify-center p-4 sm:p-7 bg-purple-50 rounded-xl shadow-md transform hover:scale-105 transition-transform duration-200 ease-in-out border border-purple-100">
-              <div className="text-3xl sm:text-4xl font-extrabold text-purple-700 mb-1 sm:mb-2 leading-none">
-                {getQuestionStats().answered + getQuestionStats().answeredMarked}
+              <div className="flex flex-col items-center justify-center p-4 sm:p-7 bg-green-50 rounded-xl shadow-md transform hover:scale-105 transition-transform duration-200 ease-in-out border border-green-100">
+                <div className="text-3xl sm:text-4xl font-extrabold text-green-700 mb-1 sm:mb-2 leading-none">
+                  {((score / questions.length) * 100).toFixed(1)}%
+                </div>
+                <div className="text-sm sm:text-base text-gray-700 font-medium text-center">Percentage</div>
               </div>
-              <div className="text-sm sm:text-base text-gray-700 font-medium text-center">Attempted</div>
-            </div>
 
-            {/* Not Attempted */}
-            <div className="flex flex-col items-center justify-center p-4 sm:p-7 bg-orange-50 rounded-xl shadow-md transform hover:scale-105 transition-transform duration-200 ease-in-out border border-orange-100">
-              <div className="text-3xl sm:text-4xl font-extrabold text-orange-700 mb-1 sm:mb-2 leading-none">
-                {questions.length - (getQuestionStats().answered + getQuestionStats().answeredMarked)}
+              <div className="flex flex-col items-center justify-center p-4 sm:p-7 bg-purple-50 rounded-xl shadow-md transform hover:scale-105 transition-transform duration-200 ease-in-out border border-purple-100">
+                <div className="text-3xl sm:text-4xl font-extrabold text-purple-700 mb-1 sm:mb-2 leading-none">
+                  {getQuestionStats().answered + getQuestionStats().answeredMarked}
+                </div>
+                <div className="text-sm sm:text-base text-gray-700 font-medium text-center">Attempted</div>
               </div>
-              <div className="text-sm sm:text-base text-gray-700 font-medium text-center">Not Attempted</div>
+
+              <div className="flex flex-col items-center justify-center p-4 sm:p-7 bg-orange-50 rounded-xl shadow-md transform hover:scale-105 transition-transform duration-200 ease-in-out border border-orange-100">
+                <div className="text-3xl sm:text-4xl font-extrabold text-orange-700 mb-1 sm:mb-2 leading-none">
+                  {questions.length - (getQuestionStats().answered + getQuestionStats().answeredMarked)}
+                </div>
+                <div className="text-sm sm:text-base text-gray-700 font-medium text-center">Not Attempted</div>
+              </div>
             </div>
-          </div>
 
-          <div className="text-center mb-8 sm:mb-10">
-            <div className={`text-4xl sm:text-5xl font-extrabold mb-3 sm:mb-5 tracking-tight ${
-              ((score / questions.length) * 100) >= 40 ? 'text-green-600' : 'text-red-600'
-            }`}>
-              {((score / questions.length) * 100) >= 40 ? '✅ PASS' : '❌ FAIL'}
+            <div className="text-center mb-8 sm:mb-10">
+              <div className={`text-4xl sm:text-5xl font-extrabold mb-3 sm:mb-5 tracking-tight ${
+                ((score / questions.length) * 100) >= 40 ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {((score / questions.length) * 100) >= 40 ? '✅ PASS' : '❌ FAIL'}
+              </div>
+              <div className="text-base sm:text-lg text-gray-700 mb-2 font-semibold">
+                Time Taken: {formatElapsedTimeForDisplay(timeElapsedSeconds)}
+              </div>
+              <div className="text-sm sm:text-base text-gray-600">
+                Candidate: <span className="font-medium">{Realname}</span> | Test: <span className="font-medium">{decodeURIComponent(group)}</span> - <span className="font-medium">{decodeURIComponent(test)}</span>
+              </div>
+              
+              {/* Show auto-submit notification if applicable */}
+              {timer <= 0 && (
+                <div className="mt-4 p-3 bg-yellow-100 border border-yellow-400 rounded-lg">
+                  <p className="text-yellow-800 text-sm font-medium">
+                    ⏰ This quiz was automatically submitted due to time expiry.
+                  </p>
+                </div>
+              )}
             </div>
-            <div className="text-base sm:text-lg text-gray-700 mb-2 font-semibold">
-              Time Taken: {formatElapsedTimeForDisplay(timeElapsedSeconds)}
+
+            {/* View Response Sheet Button */}
+            <div className="text-center mt-6 sm:mt-8">
+              <button
+                onClick={scrollToResponseSheet}
+                className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200 text-base sm:text-lg font-semibold border-b-2 border-blue-600 hover:border-blue-800 pb-1"
+              >
+                View Detailed Response Sheet 👇
+              </button>
             </div>
-            <div className="text-sm sm:text-base text-gray-600">
-              Candidate: <span className="font-medium">{Realname}</span> | Test: <span className="font-medium">{decodeURIComponent(group)}</span> - <span className="font-medium">{decodeURIComponent(test)}</span>
+
+            <div className="flex flex-col sm:flex-row justify-center mt-6 sm:mt-8 space-y-4 sm:space-y-0 sm:space-x-5">
+              <button
+                onClick={handleDownloadPdf}
+                className="bg-green-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg hover:bg-green-700 transition-colors duration-200 ease-in-out text-base sm:text-lg font-semibold shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
+              >
+                📥 Download Results PDF
+              </button>
+              <button
+                onClick={redirectToHome}
+                className="bg-blue-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg hover:bg-blue-700 transition-colors duration-200 ease-in-out text-base sm:text-lg font-semibold shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+              >
+                🏠 Back to Home
+              </button>
             </div>
-           
-          </div>
-       {/* New line/button to scroll to ResponseSheet */}
-          <div className="text-center mt-6 sm:mt-8">
-            <button
-              onClick={scrollToResponseSheet}
-              className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200 text-base sm:text-lg font-semibold border-b-2 border-blue-600 hover:border-blue-800 pb-1"
-            >
-              View Detailed Response Sheet 👇
-            </button>
-          </div>
-          <div className="flex flex-col sm:flex-row justify-center mt-6 sm:mt-8 space-y-4 sm:space-y-0 sm:space-x-5">
-            <button
-              onClick={handleDownloadPdf}
-              className="bg-green-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg hover:bg-green-700 transition-colors duration-200 ease-in-out text-base sm:text-lg font-semibold shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
-            >
-              📥 Download Results PDF
-            </button>
 
-            <button
-              onClick={() => router.replace("/")}
-              className="bg-blue-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg hover:bg-blue-700 transition-colors duration-200 ease-in-out text-base sm:text-lg font-semibold shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-            >
-              🏠 Back to Home
-            </button>
-          </div>
-
-   
-
-
-          {/* 3. Attach the ref to the ResponseSheet component's container/wrapper */}
-          <div ref={responseSheetRef}>
-               
-<div ref={responseSheetRef}>
-  <ResponseSheet
-    questions={questions}
-    selectedOptions={selectedOption}
-  />
-</div>
+            {/* Response Sheet */}
+            <div ref={responseSheetRef}>
+              <ResponseSheet
+                questions={questions}
+                selectedOptions={selectedOption}
+              />
+            </div>
           </div>
         </div>
       </div>
-    </div>
-
     );
   }
 
@@ -788,15 +1001,42 @@ const handleSubmit = async () => {
               <button
                 onClick={() => {
                   setShowSubmitConfirm(false);
-                  // Optionally re-start timer if user cancels submission
-                  if (!timerIntervalRef.current && timer > 0 && !showSummary) {
+                  // Restart timer if user cancels submission
+                  if (!timerIntervalRef.current && timer > 0 && !showSummary && !isSubmitting) {
                     timerIntervalRef.current = setInterval(() => {
                       setTimer(prev => {
-                        if (prev <= 0) {
+                        if (prev <= 1) {
                           clearInterval(timerIntervalRef.current);
                           timerIntervalRef.current = null;
-                          handleSubmit();
+                          setSubmissionMessage("Time's up! Auto-submitting your quiz...");
+                          setIsSubmitting(true);
+                          setTimeout(() => {
+                            setStatus(prevStatus => {
+                              const updatedStatus = { ...prevStatus };
+                              if (selectedOption[index]) {
+                                if (markedQuestions[index]) {
+                                  updatedStatus[index] = "answered-marked";
+                                } else {
+                                  updatedStatus[index] = "answered";
+                                }
+                              } else {
+                                if (prevStatus[index] === 'not-visited') {
+                                  updatedStatus[index] = "not-answered";
+                                }
+                              }
+                              setTimeout(() => {
+                                handleSubmit(true);
+                              }, 100);
+                              return updatedStatus;
+                            });
+                          }, 1000);
                           return 0;
+                        }
+                        if (prev === 300) {
+                          alert("⚠️ Warning: Only 5 minutes remaining!");
+                        }
+                        if (prev === 60) {
+                          alert("⚠️ Final Warning: Only 1 minute remaining!");
                         }
                         return prev - 1;
                       });
@@ -808,7 +1048,7 @@ const handleSubmit = async () => {
                 No
               </button>
               <button
-                onClick={handleSubmit}
+                onClick={() => handleSubmit(false)}
                 className="bg-red-500 text-white px-4 sm:px-6 py-2 rounded-md hover:bg-red-600 text-sm sm:text-base"
               >
                 Yes, Submit
@@ -846,7 +1086,14 @@ const handleSubmit = async () => {
             </div>
             <div className="text-right text-sm">
               <span>Time Remaining: </span>
-              <span className="font-bold text-red-200">{formatTime(timer)}</span>
+              <span className={`font-bold ${timer <= 300 ? 'text-red-200 animate-pulse' : 'text-red-200'}`}>
+                {formatTime(timer)}
+              </span>
+              {timer <= 60 && timer > 0 && (
+                <div className="text-xs text-red-200 animate-bounce">
+                  ⚠️ Hurry up!
+                </div>
+              )}
             </div>
           </div>
 
@@ -881,6 +1128,7 @@ const handleSubmit = async () => {
                           checked={selectedOption[index] === opt}
                           onChange={() => handleOptionChange(opt)}
                           className="w-4 h-4 text-blue-600 mt-1 flex-shrink-0"
+                          disabled={isSubmitting}
                         />
                         <span className="text-sm sm:text-base text-gray-800 leading-relaxed">{opt}</span>
                       </label>
@@ -896,13 +1144,15 @@ const handleSubmit = async () => {
             <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
               <button
                 onClick={markReview}
-                className="px-3 py-1.5 text-xs sm:px-4 sm:py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                disabled={isSubmitting}
+                className="px-3 py-1.5 text-xs sm:px-4 sm:py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Mark For Review & Next
               </button>
               <button
                 onClick={clearResponse}
-                className="px-3 py-1.5 text-xs sm:px-4 sm:py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                disabled={isSubmitting}
+                className="px-3 py-1.5 text-xs sm:px-4 sm:py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Clear Response
               </button>
@@ -916,13 +1166,15 @@ const handleSubmit = async () => {
                   }
                   setShowSubmitConfirm(true);
                 }}
-                className="px-4 py-1.5 text-xs sm:px-6 sm:py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                disabled={isSubmitting}
+                className="px-4 py-1.5 text-xs sm:px-6 sm:py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Submit
               </button>
               <button
                 onClick={nextQuestion}
-                className="px-4 py-1.5 text-xs sm:px-6 sm:py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                disabled={isSubmitting}
+                className="px-4 py-1.5 text-xs sm:px-6 sm:py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Save & Next
               </button>
@@ -935,7 +1187,8 @@ const handleSubmit = async () => {
           {/* Toggle Button */}
           <button
             onClick={() => setShowRightPanel(!showRightPanel)}
-            className="absolute -left-8 top-1/2 transform -translate-y-1/2 bg-blue-500 text-white p-1.5 sm:p-2 rounded-l hover:bg-blue-600 transition-colors z-50"
+            disabled={isSubmitting}
+            className="absolute -left-8 top-1/2 transform -translate-y-1/2 bg-blue-500 text-white p-1.5 sm:p-2 rounded-l hover:bg-blue-600 transition-colors z-50 disabled:opacity-50"
           >
             {showRightPanel ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
           </button>
@@ -1004,7 +1257,8 @@ const handleSubmit = async () => {
                     <button
                       key={i}
                       onClick={() => goToQuestion(i)}
-                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full text-xs sm:text-sm font-semibold transition-all flex items-center justify-center ${
+                      disabled={isSubmitting}
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full text-xs sm:text-sm font-semibold transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed ${
                         i === index
                           ? 'bg-blue-500 text-white border-2 border-blue-700 scale-110'
                           : getQuestionStatusClass(i)
