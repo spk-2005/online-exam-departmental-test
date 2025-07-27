@@ -177,7 +177,7 @@ export default function Quiz() {
     }
   }, [router]);
 
-  const QUIZ_DURATION = 10; // 10 seconds for testing (change to 7200 for 2 hours)
+  const QUIZ_DURATION = 7200; // 10 seconds for testing (change to 7200 for 2 hours)
 
   const [index, setIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState({});
