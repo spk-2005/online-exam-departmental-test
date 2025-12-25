@@ -1113,7 +1113,7 @@ export default function Quiz() {
               <>
                 <div className="mb-6 sm:mb-8">
                   <h3 className="text-base sm:text-lg font-medium text-gray-800 mb-4 sm:mb-6 leading-relaxed">
-                    {questions[index].question}
+                    {questions[index].question.replace(/^Q\d+\)\s*/i, "")}
                   </h3>
 
                   <div className="space-y-3 sm:space-y-4">
