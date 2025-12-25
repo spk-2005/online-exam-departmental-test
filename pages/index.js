@@ -187,17 +187,7 @@ export default function Home() {
           {/* Payment Section - First */}
           {/* Removed shadow-xl from here */}
           {/* Reduced p-2 from p-6, and sm:p-8 from sm:p-8 */}
-          <div id="payment-section" className="bg-white/80 backdrop-blur-sm rounded-3xl p-4 sm:p-8 border border-white/20">
-            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                </svg>
-              </div>
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">చెల్లింపు (Payment)</h2>
-            </div>
-            <PaymentRedirect username={isAuthenticated ? username : ""} />
-          </div>
+
 
           {/* Leaderboard Section - Second */}
           {/* Removed shadow-xl from here */}
@@ -233,13 +223,6 @@ export default function Home() {
 
       </main>
 
-      {/* Contact Section */}
-      <section className="bg-gradient-to-r from-gray-100 to-gray-200 mt-12 lg:mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-          <ContactUs />
-          <Footer />
-        </div>
-      </section>
     </div>
   );
 }
