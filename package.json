@@ -39,7 +39,7 @@
     "tailwindcss": "^3.4.4"
   },
   "engines": {
-  "node": "18.20.3"
+  "node": "24.x"
 }
 
 }
