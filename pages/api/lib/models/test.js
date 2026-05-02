@@ -4,8 +4,10 @@ const TestSchema = new mongoose.Schema({
   question: { type: String, required: true },
   options: { type: [String], required: true },  // Example: ["A", "B", "C", "D"]
   correct: { type: String, required: true },    // One of the options
-  group: { type: String, required: true },      // Example: "Group-1"
-  test: { type: String, required: true }        // Example: "Test-1"
+  group: { type: String, required: true, index: true },      // Example: "Group-1"
+  test: { type: String, required: true, index: true }        // Example: "Test-1"
 }, { timestamps: true });
+
+TestSchema.index({ group: 1, test: 1 });
 
 export default mongoose.models.Test || mongoose.model("Test", TestSchema);
