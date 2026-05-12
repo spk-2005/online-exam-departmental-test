@@ -12,11 +12,31 @@ const Leaderboard = () => {
     const [sortBy, setSortBy] = useState('percentage');
     const [sortOrder, setSortOrder] = useState('desc');
 
-    // Helper to convert time string (MM:SS) to minutes for sorting
+    // Helper to convert verbose time string to minutes for sorting
     const timeToMinutes = useCallback((timeStr) => {
         if (!timeStr) return 0;
-        const [minutes, seconds] = timeStr.split(':').map(Number);
-        return minutes + seconds / 60;
+
+        // Handle "MM:SS" or "HH:MM:SS" format just in case
+        if (timeStr.includes(':')) {
+            const parts = timeStr.split(':').map(Number);
+            if (parts.length === 2) return parts[0] + parts[1] / 60;
+            if (parts.length === 3) return parts[0] * 60 + parts[1] + parts[2] / 60;
+            return 0;
+        }
+
+        // Handle "X hours Y minutes Z seconds" format
+        let minutes = 0;
+        
+        const hourMatch = timeStr.match(/(\d+)\s*hour/i);
+        if (hourMatch) minutes += parseInt(hourMatch[1], 10) * 60;
+        
+        const minMatch = timeStr.match(/(\d+)\s*minute/i);
+        if (minMatch) minutes += parseInt(minMatch[1], 10);
+        
+        const secMatch = timeStr.match(/(\d+)\s*second/i);
+        if (secMatch) minutes += parseInt(secMatch[1], 10) / 60;
+        
+        return minutes;
     }, []);
 
     // Fetch results from database
@@ -25,9 +45,15 @@ const Leaderboard = () => {
             setLoading(true);
             setError(null);
             // In a real app, this would be your API endpoint
-            const response = await fetch('/api/results/results');
+            const token = localStorage.getItem('auth-token');
+            const response = await fetch('/api/results/results', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
 
             if (!response.ok) {
+                // Do not redirect on 401, just throw an error to show gracefully
                 throw new Error(`Failed to fetch results: ${response.statusText}`);
             }
 
@@ -38,6 +64,7 @@ const Leaderboard = () => {
                 score: parseInt(item.score, 10) || 0,
                 total: parseInt(item.total, 10) || 0,
                 attempted: parseInt(item.attempted, 10) || 0,
+                finalresult: item.finalresult || item.finalResult || (parseFloat(item.percentage) >= 40 ? 'Pass' : 'Fail')
             }));
             setResults(processedData);
         } catch (err) {
@@ -115,7 +142,7 @@ const Leaderboard = () => {
 
     const getResultBadge = (result) => {
         const baseClasses = 'px-1.5 py-0.5 rounded-full text-2xs xs:text-xs font-semibold whitespace-nowrap';
-        if (result === 'Pass') {
+        if (result && result.toLowerCase() === 'pass') {
             return `${baseClasses} bg-emerald-100 text-emerald-800`;
         }
         return `${baseClasses} bg-rose-100 text-rose-800`;
@@ -256,7 +283,7 @@ const Leaderboard = () => {
                     <div className="bg-white rounded-lg shadow-md p-4 flex items-center justify-between border border-gray-200 transition-transform duration-200 hover:scale-[1.02]">
                         <div>
                             <p className="text-xs font-medium text-gray-600 mb-0.5">Total Results</p>
-                            <p className="text-xl xs:text-2xl font-extrabold text-gray-900">{Array.isArray(results) ? results.length : 0}</p>
+                            <p className="text-xl xs:text-2xl font-extrabold text-gray-900">{Array.isArray(filteredResults) ? filteredResults.length : 0}</p>
                         </div>
                         <Users className="w-8 h-8 xs:w-9 xs:h-9 text-blue-500 bg-blue-50 p-1.5 rounded-full" />
                     </div>
@@ -265,7 +292,7 @@ const Leaderboard = () => {
                         <div>
                             <p className="text-xs font-medium text-gray-600 mb-0.5">Avg Percentage</p>
                             <p className="text-xl xs:text-2xl font-extrabold text-gray-900">
-                                {Array.isArray(results) && results.length > 0 ? (results.reduce((acc, r) => acc + r.percentage, 0) / results.length).toFixed(1) : 0}%
+                                {Array.isArray(filteredResults) && filteredResults.length > 0 ? (filteredResults.reduce((acc, r) => acc + r.percentage, 0) / filteredResults.length).toFixed(1) : 0}%
                             </p>
                         </div>
                         <Target className="w-8 h-8 xs:w-9 xs:h-9 text-green-500 bg-green-50 p-1.5 rounded-full" />
@@ -275,7 +302,7 @@ const Leaderboard = () => {
                         <div>
                             <p className="text-xs font-medium text-gray-600 mb-0.5">Pass Rate</p>
                             <p className="text-xl xs:text-2xl font-extrabold text-gray-900">
-                                {Array.isArray(results) && results.length > 0 ? ((results.filter(r => r.finalresult === 'Pass').length / results.length) * 100).toFixed(1) : 0}%
+                                {Array.isArray(filteredResults) && filteredResults.length > 0 ? ((filteredResults.filter(r => r.finalresult && r.finalresult.toLowerCase() === 'pass').length / filteredResults.length) * 100).toFixed(1) : 0}%
                             </p>
                         </div>
                         <Award className="w-8 h-8 xs:w-9 xs:h-9 text-yellow-600 bg-yellow-50 p-1.5 rounded-full" />
@@ -285,7 +312,7 @@ const Leaderboard = () => {
                         <div>
                             <p className="text-xs font-medium text-gray-600 mb-0.5">Avg Time</p>
                             <p className="text-xl xs:text-2xl font-extrabold text-gray-900">
-                                {Array.isArray(results) && results.length > 0 ? (results.reduce((acc, r) => acc + timeToMinutes(r.timeTaken), 0) / results.length).toFixed(1) : 0}m
+                                {Array.isArray(filteredResults) && filteredResults.length > 0 ? (filteredResults.reduce((acc, r) => acc + timeToMinutes(r.timeTaken), 0) / filteredResults.length).toFixed(1) : 0}m
                             </p>
                         </div>
                         <Clock className="w-8 h-8 xs:w-9 xs:h-9 text-purple-600 bg-purple-50 p-1.5 rounded-full" />

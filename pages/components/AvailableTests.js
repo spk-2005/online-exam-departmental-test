@@ -40,9 +40,11 @@ export default function AvailableTests() {
           return;
         }
 
+        const token = localStorage.getItem('auth-token');
         const res = await fetch(`/api/users/attempts?username=${username}`, {
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
           }
         });
 
@@ -173,25 +175,23 @@ export default function AvailableTests() {
                           <h3 className="text-lg font-semibold text-gray-900 mb-3 transition-colors duration-300">
                             {test.testName}
                           </h3>
-                          
+
                           {/* Attempts Info */}
                           <div className="flex items-center space-x-2 mb-2">
                             <span className="text-sm text-gray-600">Attempts Left:</span>
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold border-2 transition-all duration-300 ${
-                              test.remainingAttempts > 0 
-                                ? 'border-green-500 text-green-700 shadow-sm' 
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold border-2 transition-all duration-300 ${test.remainingAttempts > 0
+                                ? 'border-green-500 text-green-700 shadow-sm'
                                 : 'border-red-500 text-red-700 shadow-sm'
-                            }`}>
+                              }`}>
                               {test.remainingAttempts}
                             </span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <span className="text-sm text-gray-600">మిగిలిన అవకాశాలు:</span>
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold border-2 transition-all duration-300 ${
-                              test.remainingAttempts > 0 
-                                ? 'border-green-500 text-green-700 shadow-sm' 
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold border-2 transition-all duration-300 ${test.remainingAttempts > 0
+                                ? 'border-green-500 text-green-700 shadow-sm'
                                 : 'border-red-500 text-red-700 shadow-sm'
-                            }`}>
+                              }`}>
                               {test.remainingAttempts}
                             </span>
                           </div>
